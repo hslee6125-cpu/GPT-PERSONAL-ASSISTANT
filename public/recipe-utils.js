@@ -19,5 +19,15 @@
     };
   }
 
-  return { deleteRecipeFromState };
+  function unlinkSourceDocumentFromRecipes(recipes, storedName) {
+    const source = Array.isArray(recipes) ? recipes : [];
+    return source.map(recipe => {
+      if (recipe?.sourceDocument?.storedName !== storedName) return recipe;
+      const next = { ...recipe };
+      delete next.sourceDocument;
+      return next;
+    });
+  }
+
+  return { deleteRecipeFromState, unlinkSourceDocumentFromRecipes };
 });
