@@ -1,10 +1,15 @@
 const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const mammoth = require("mammoth");
 
 const PORT = Number(process.env.PORT || 8787);
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || "")
+  .replace(/^\uFEFF/, "")
+  .trim()
+  .replace(/^["']+|["']+$/g, "")
+  .replace(/[\s\uFEFF]+/g, "");
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5-nano";
 const PUBLIC_DIR = path.join(__dirname, "public");
 const APP_VERSION = fs.existsSync(path.join(__dirname, "VERSION")) ? fs.readFileSync(path.join(__dirname, "VERSION"), "utf8").trim() : "unknown";
@@ -51,33 +56,190 @@ function parseJsonObject(raw) {
   return JSON.parse(candidate);
 }
 
-async function callOpenAI(instructions, input, max_output_tokens=3000) {
+const INBOX_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    summary: { type: "string" },
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          type: { type: "string", enum: ["todo", "memo", "project"] },
+          title: { type: "string" },
+          details: { type: "string" },
+          priority: { type: "string", enum: ["high", "medium", "low"] },
+          dueDate: { type: ["string", "null"] },
+          tags: { type: "array", items: { type: "string" } },
+          projectTitle: { type: ["string", "null"] }
+        },
+        required: ["type", "title", "details", "priority", "dueDate", "tags", "projectTitle"]
+      }
+    }
+  },
+  required: ["summary", "items"]
+};
+
+const RECIPE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    documentSummary: { type: "string" },
+    recipes: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          baseServings: { type: ["number", "null"] },
+          yieldAmount: { type: ["number", "null"] },
+          yieldUnit: { type: ["string", "null"] },
+          portionAmount: { type: ["number", "null"] },
+          portionUnit: { type: ["string", "null"] },
+          ingredients: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                name: { type: "string" },
+                amount: { type: ["number", "null"] },
+                rawAmount: { type: ["string", "null"] },
+                unit: { type: ["string", "null"] },
+                prep: { type: ["string", "null"] }
+              },
+              required: ["name", "amount", "rawAmount", "unit", "prep"]
+            }
+          },
+          steps: { type: "array", items: { type: "string" } },
+          notes: { type: "string" }
+        },
+        required: [
+          "name", "baseServings", "yieldAmount", "yieldUnit",
+          "portionAmount", "portionUnit", "ingredients", "steps", "notes"
+        ]
+      }
+    }
+  },
+  required: ["documentSummary", "recipes"]
+};
+
+function httpsJsonRequest(options, payload, timeoutMs=30000) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+
+    const req = https.request({
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body),
+        "Connection": "close"
+      },
+      timeout: timeoutMs
+    }, (res) => {
+      let raw = "";
+      res.setEncoding("utf8");
+      res.on("data", chunk => raw += chunk);
+      res.on("end", () => {
+        let parsed = {};
+        try {
+          parsed = raw ? JSON.parse(raw) : {};
+        } catch {
+          return reject(new Error(`OpenAI 응답을 읽지 못했습니다. HTTP ${res.statusCode}`));
+        }
+
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          data: parsed
+        });
+      });
+    });
+
+    req.on("timeout", () => {
+      req.destroy(new Error("OpenAI API 연결 시간이 초과되었습니다."));
+    });
+
+    req.on("error", (err) => {
+      const code = err?.code ? ` [${err.code}]` : "";
+      const cause = err?.cause?.code ? ` / ${err.cause.code}` : "";
+      reject(new Error(`OpenAI API 연결 실패${code}${cause}: ${err.message}`));
+    });
+
+    req.write(body);
+    req.end();
+  });
+}
+
+async function callOpenAI(instructions, input, max_output_tokens=3000, schemaName=null, schema=null) {
   if (!OPENAI_API_KEY) {
     const err = new Error("OPENAI_API_KEY가 설정되지 않았습니다.");
     err.code = "NO_API_KEY";
     throw err;
   }
 
-  const r = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      instructions,
-      input,
-      max_output_tokens
-    })
-  });
+  if (!/^sk-[\x21-\x7E]+$/.test(OPENAI_API_KEY)) {
+    throw new Error("저장된 OpenAI API Key 형식이 올바르지 않습니다. SETUP.cmd를 다시 실행해서 API Key를 다시 입력해 주세요.");
+  }
 
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data?.error?.message || `OpenAI API 오류 (${r.status})`);
+  const requestBody = {
+    model: OPENAI_MODEL,
+    instructions,
+    input,
+    max_output_tokens
+  };
+
+  if (schemaName && schema) {
+    requestBody.text = {
+      format: {
+        type: "json_schema",
+        name: schemaName,
+        strict: true,
+        schema
+      }
+    };
+  }
+
+  let result;
+  try {
+    result = await httpsJsonRequest({
+      hostname: "api.openai.com",
+      port: 443,
+      path: "/v1/responses",
+      method: "POST",
+      family: 4,
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      }
+    }, requestBody, 45000);
+  } catch (e) {
+    throw e;
+  }
+
+  const data = result.data || {};
+
+  if (!result.ok) {
+    const message = data?.error?.message || `OpenAI API 오류 (${result.status})`;
+    throw new Error(message);
+  }
+
+  if (data?.status === "incomplete") {
+    const reason = data?.incomplete_details?.reason || "unknown";
+    throw new Error(`GPT 응답이 중간에 종료되었습니다 (${reason}). 다시 시도해 주세요.`);
+  }
 
   const raw = extractResponseText(data);
   if (!raw) throw new Error("GPT 응답이 비어 있습니다.");
-  return parseJsonObject(raw);
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error("GPT 응답 형식을 읽지 못했습니다. 다시 시도해 주세요.");
+  }
 }
 
 async function analyzeInbox(text, currentDate) {
@@ -110,7 +272,7 @@ async function analyzeInbox(text, currentDate) {
   ]
 }`.trim();
 
-  return callOpenAI(instructions, text, 1800);
+  return callOpenAI(instructions, text, 3000, "assistant_inbox", INBOX_SCHEMA);
 }
 
 function recipeInstructions(sourceLabel="직접 입력") {
@@ -168,7 +330,7 @@ async function parseRecipes(text, sourceLabel) {
   if (text.length > 160000) {
     throw new Error("문서 내용이 너무 깁니다. 레시피 문서를 여러 파일로 나눠 업로드해 주세요.");
   }
-  const result = await callOpenAI(recipeInstructions(sourceLabel), text, 5200);
+  const result = await callOpenAI(recipeInstructions(sourceLabel), text, 6500, "recipe_document", RECIPE_SCHEMA);
   if (!Array.isArray(result?.recipes)) {
     throw new Error("GPT가 레시피 목록을 올바르게 반환하지 않았습니다.");
   }
