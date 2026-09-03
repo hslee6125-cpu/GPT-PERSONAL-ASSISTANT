@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.3.9</title>
+<title>GPT Personal Assistant v4.4.0</title>
 <style>
 :root{
   --bg:#f6f7fb;--card:#fff;--text:#17181d;--muted:#747985;--line:#e6e8ef;
@@ -72,10 +72,11 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 <body>
 <div class="wrap">
 <header>
-  <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 업로드 + 요리 프로젝트 재료 합산</div></div>
+  <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 업로드 + 요리 프로젝트 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.3.9</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.4.0</div>
+<div id="storageBadge" class="update-connected" style="background:#f5f7ff;border-color:#d9def8;color:#4d5797">OneDrive 저장 상태 확인 중...</div>
 
 <div class="tabs">
   <button class="tab active" data-view="assistant">개인 비서</button>
@@ -90,7 +91,7 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
       <textarea id="inboxText" placeholder="예) 10월 워홀 신청 준비. 잔고증명서와 여권 사본 준비. 일본 취업은 장기 프로젝트로 관리."></textarea>
       <button id="analyzeInbox" class="primary full">GPT로 정리해서 저장</button>
       <div id="inboxError" class="error"></div>
-      <div class="notice">GPT는 문장 해석과 분류에 사용합니다. 저장 데이터는 이 브라우저에 보관됩니다.</div>
+      <div class="notice">GPT는 문장 해석과 분류에 사용합니다. 데이터는 OneDrive에 자동 저장되며 브라우저에는 비상용 사본도 유지됩니다.</div>
     </div>
     <div class="card pad">
       <div class="kpis">
@@ -219,17 +220,143 @@ let recipes=JSON.parse(localStorage.getItem(KEYS.recipes)||"[]");
 let cooking=JSON.parse(localStorage.getItem(KEYS.cooking)||"[]");
 let pendingRecipes=null;
 let selectedDocx=null;
+let oneDriveAvailable=false;
+let oneDriveReady=false;
+let oneDrivePath="";
+let saveTimer=null;
+let saveChain=Promise.resolve();
 
 const $=id=>document.getElementById(id);
 const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random();
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-function persist(){
+function currentState(){
+  return {
+    schemaVersion:1,
+    assistant,
+    recipes,
+    cooking
+  };
+}
+
+function keepEmergencyBrowserCopy(){
   localStorage.setItem(KEYS.assistant,JSON.stringify(assistant));
   localStorage.setItem(KEYS.recipes,JSON.stringify(recipes));
   localStorage.setItem(KEYS.cooking,JSON.stringify(cooking));
+}
+
+function setStorageBadge(text,ok=true){
+  const el=$("storageBadge");
+  if(!el)return;
+  el.textContent=text;
+  el.style.background=ok?"#edf9f1":"#fff1f2";
+  el.style.borderColor=ok?"#bfe3cd":"#f0c2c8";
+  el.style.color=ok?"#1f6d43":"#9b3441";
+}
+
+function queueOneDriveSave(reason="auto"){
+  if(!oneDriveAvailable||!oneDriveReady)return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    const snapshot=JSON.parse(JSON.stringify(currentState()));
+    saveChain=saveChain.then(async()=>{
+      const r=await fetch("/api/data",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({state:snapshot,reason}),
+        keepalive:true
+      });
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(d.error||"OneDrive 저장 실패");
+      setStorageBadge(`✓ OneDrive 자동저장 · ${oneDrivePath||"GPT Personal Assistant"}`,true);
+    }).catch(e=>{
+      setStorageBadge(`⚠ OneDrive 저장 실패 · 브라우저 비상 사본 유지 (${e.message})`,false);
+    });
+  },250);
+}
+
+function persist(){
+  keepEmergencyBrowserCopy();
   renderAll();
+  queueOneDriveSave("auto");
+}
+
+async function initializeOneDriveData(){
+  try{
+    const r=await fetch("/api/data",{cache:"no-store"});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||"OneDrive 상태 확인 실패");
+
+    oneDriveAvailable=Boolean(d.available);
+    oneDrivePath=d.root||"";
+
+    if(!oneDriveAvailable){
+      oneDriveReady=false;
+      setStorageBadge("⚠ OneDrive 폴더를 찾지 못해 브라우저 비상 저장만 사용 중",false);
+      renderAll();
+      return;
+    }
+
+    const localHasData=assistant.length>0||recipes.length>0||cooking.length>0;
+    const cloud=d.state;
+    const cloudHasData=cloud && (
+      (Array.isArray(cloud.assistant)&&cloud.assistant.length>0)||
+      (Array.isArray(cloud.recipes)&&cloud.recipes.length>0)||
+      (Array.isArray(cloud.cooking)&&cloud.cooking.length>0)
+    );
+
+    if(d.error){
+      oneDriveReady=false;
+      setStorageBadge(`⚠ OneDrive 데이터 읽기 오류 · ${d.error}`,false);
+      renderAll();
+      return;
+    }
+
+    if(cloudHasData){
+      assistant=Array.isArray(cloud.assistant)?cloud.assistant:[];
+      recipes=Array.isArray(cloud.recipes)?cloud.recipes:[];
+      cooking=Array.isArray(cloud.cooking)?cloud.cooking:[];
+      keepEmergencyBrowserCopy();
+      oneDriveReady=true;
+      setStorageBadge(`✓ OneDrive에서 데이터 불러옴 · ${oneDrivePath}`,true);
+      renderAll();
+      return;
+    }
+
+    oneDriveReady=true;
+
+    if(localHasData){
+      // First launch after this update: migrate the existing browser data.
+      const save=await fetch("/api/data",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({state:currentState(),reason:"migration"})
+      });
+      const sd=await save.json().catch(()=>({}));
+      if(!save.ok)throw new Error(sd.error||"기존 데이터 OneDrive 이전 실패");
+      setStorageBadge(`✓ 기존 데이터를 OneDrive로 이전 완료 · ${oneDrivePath}`,true);
+    }else{
+      // Create the initial empty file so OneDrive sync is visible immediately.
+      const save=await fetch("/api/data",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({state:currentState(),reason:"initial"})
+      });
+      if(!save.ok){
+        const sd=await save.json().catch(()=>({}));
+        throw new Error(sd.error||"OneDrive 초기 파일 생성 실패");
+      }
+      setStorageBadge(`✓ OneDrive 자동저장 준비 완료 · ${oneDrivePath}`,true);
+    }
+
+    renderAll();
+  }catch(e){
+    oneDriveAvailable=false;
+    oneDriveReady=false;
+    setStorageBadge(`⚠ OneDrive 연결 실패 · 브라우저 비상 사본 유지 (${e.message})`,false);
+    renderAll();
+  }
 }
 
 async function apiConfig(){
@@ -616,7 +743,7 @@ function renderProjectEditor(){
 
 $("activeCookingProject").onchange=renderProjectEditor;
 function renderAll(){renderAssistant();renderRecipes();renderCookingProjects()}
-apiConfig();renderAll();
+apiConfig();renderAll();initializeOneDriveData();
 </script>
 </body>
 </html>
