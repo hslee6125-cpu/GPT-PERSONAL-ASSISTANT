@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.4.1</title>
+<title>GPT Personal Assistant v4.4.2</title>
 <style>
 :root{
   --bg:#f6f7fb;--card:#fff;--text:#17181d;--muted:#747985;--line:#e6e8ef;
@@ -76,7 +76,7 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
   <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 원본 보관 + 요리 프로젝트 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.4.1</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.4.2</div>
 <div id="storageBadge" class="update-connected" style="background:#f5f7ff;border-color:#d9def8;color:#4d5797">OneDrive 저장 상태 확인 중...</div>
 
 <div class="tabs">
@@ -218,6 +218,7 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 </section>
 </div>
 
+<script src="/recipe-utils.js"></script>
 <script>
 const KEYS={
   assistant:"gpt_pa_v4_assistant",
@@ -557,9 +558,10 @@ $("saveSelectedRecipes").onclick=()=>{
 };
 
 function deleteRecipe(id){
-  if(!confirm("레시피를 삭제할까요?"))return;
-  recipes=recipes.filter(r=>r.id!==id);
-  for(const p of cooking)p.recipes=(p.recipes||[]).filter(x=>x.recipeId!==id);
+  if(!confirm("레시피를 삭제할까요?\n\n원본 Word 파일은 삭제되지 않고 계속 보관됩니다."))return;
+  const next=RecipeUtils.deleteRecipeFromState({recipes,cooking},id);
+  recipes=next.recipes;
+  cooking=next.cooking;
   persist();
 }
 window.deleteRecipe=deleteRecipe;
