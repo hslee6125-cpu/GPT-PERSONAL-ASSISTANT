@@ -81,7 +81,16 @@ function createDocumentStore(rootDir, options = {}) {
     return full;
   }
 
-  return { saveDocx, listDocx, resolveDocx };
+  function deleteDocx(storedName) {
+    const full = resolveDocx(storedName);
+    if (!fs.existsSync(full)) return false;
+    const stat = fs.statSync(full);
+    if (!stat.isFile()) throw new Error('허용되지 않은 파일입니다.');
+    fs.unlinkSync(full);
+    return true;
+  }
+
+  return { saveDocx, listDocx, resolveDocx, deleteDocx };
 }
 
 module.exports = {
