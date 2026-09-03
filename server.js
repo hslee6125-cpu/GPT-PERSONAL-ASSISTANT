@@ -3,6 +3,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const mammoth = require("mammoth");
+const { createDocumentStore, originalFromStoredName } = require("./document-store");
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || "")
@@ -39,6 +40,8 @@ const USER_DATA_ROOT = ONEDRIVE_ROOT ? path.join(ONEDRIVE_ROOT, "GPT Personal As
 const USER_DATA_DIR = USER_DATA_ROOT ? path.join(USER_DATA_ROOT, "Data") : null;
 const USER_BACKUP_DIR = USER_DATA_ROOT ? path.join(USER_DATA_ROOT, "Backups") : null;
 const USER_DATA_FILE = USER_DATA_DIR ? path.join(USER_DATA_DIR, "assistant-data.json") : null;
+const USER_DOCUMENT_DIR = USER_DATA_ROOT ? path.join(USER_DATA_ROOT, "Documents", "Recipes") : null;
+const DOCUMENT_STORE = USER_DOCUMENT_DIR ? createDocumentStore(USER_DOCUMENT_DIR) : null;
 const BACKUP_INTERVAL_MS = 30 * 60 * 1000;
 const MAX_BACKUPS = 100;
 
@@ -168,6 +171,7 @@ function storageInfo() {
     provider: ONEDRIVE_ROOT ? "OneDrive" : null,
     root: USER_DATA_ROOT,
     dataFile: USER_DATA_FILE,
+    documentsDir: USER_DOCUMENT_DIR,
     exists
   };
 }
@@ -647,6 +651,44 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (req.method === "GET" && req.url === "/api/documents") {
+      if (!DOCUMENT_STORE) {
+        return send(res, 200, JSON.stringify({available:false, documents:[]}));
+      }
+      try {
+        return send(res, 200, JSON.stringify({
+          available:true,
+          root:USER_DOCUMENT_DIR,
+          documents:DOCUMENT_STORE.listDocx()
+        }));
+      } catch (e) {
+        return send(res, 500, JSON.stringify({error:e?.message || "원본 Word 보관함을 읽지 못했습니다."}));
+      }
+    }
+
+    if (req.method === "GET" && String(req.url || "").startsWith("/api/documents/download?")) {
+      if (!DOCUMENT_STORE) {
+        return send(res, 503, JSON.stringify({error:"OneDrive 원본 파일 보관함을 사용할 수 없습니다."}));
+      }
+      const requestUrl = new URL(req.url, `http://127.0.0.1:${PORT}`);
+      const storedName = requestUrl.searchParams.get("name") || "";
+      let full;
+      try { full = DOCUMENT_STORE.resolveDocx(storedName); }
+      catch (e) { return send(res, 400, JSON.stringify({error:e.message})); }
+      if (!fs.existsSync(full) || !fs.statSync(full).isFile()) {
+        return send(res, 404, JSON.stringify({error:"원본 Word 파일을 찾지 못했습니다."}));
+      }
+      const originalName = originalFromStoredName(storedName);
+      const encoded = encodeURIComponent(originalName);
+      res.writeHead(200, {
+        "Content-Type":"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Length":fs.statSync(full).size,
+        "Content-Disposition":`attachment; filename="recipe.docx"; filename*=UTF-8''${encoded}`,
+        "Cache-Control":"no-store"
+      });
+      return fs.createReadStream(full).pipe(res);
+    }
+
     if (req.method === "POST" && req.url === "/api/analyze") {
       const p = await readJsonBody(req, 1_000_000);
       const text = String(p.text || "").trim();
@@ -676,6 +718,15 @@ const server = http.createServer(async (req, res) => {
       if (!buffer.length) return send(res, 400, JSON.stringify({error:"Word 파일을 읽을 수 없습니다."}));
       if (buffer.length > 20_000_000) return send(res, 413, JSON.stringify({error:"Word 파일은 20MB 이하로 업로드해 주세요."}));
 
+      let sourceDocument = null;
+      if (DOCUMENT_STORE) {
+        try {
+          sourceDocument = DOCUMENT_STORE.saveDocx(filename, buffer);
+        } catch (e) {
+          return send(res, 500, JSON.stringify({error:`원본 Word 파일을 OneDrive에 보관하지 못했습니다: ${e.message}`}));
+        }
+      }
+
       const extracted = await extractDocxText(buffer);
       if (!extracted || extracted.length < 10) {
         return send(res, 400, JSON.stringify({
@@ -685,6 +736,7 @@ const server = http.createServer(async (req, res) => {
 
       const result = await parseRecipes(extracted, `Word 파일: ${filename}`);
       result.sourceFilename = filename;
+      result.sourceDocument = sourceDocument;
       result.extractedChars = extracted.length;
       return send(res, 200, JSON.stringify(result));
     }
