@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.4.0</title>
+<title>GPT Personal Assistant v4.4.1</title>
 <style>
 :root{
   --bg:#f6f7fb;--card:#fff;--text:#17181d;--muted:#747985;--line:#e6e8ef;
@@ -29,6 +29,7 @@ textarea{min-height:180px;resize:vertical;line-height:1.5}
 textarea:focus,input:focus,select:focus{border-color:#aab4ff;box-shadow:0 0 0 3px var(--accent2)}
 button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:pointer}
 .primary{background:var(--accent);color:white}.ghost{background:#fff;border:1px solid var(--line)}.danger{color:var(--danger)}.full{width:100%;margin-top:10px}
+.btnlink{display:inline-block;text-decoration:none;border-radius:11px;padding:6px 8px;font-weight:800;font-size:11px;background:#fff;border:1px solid var(--line);color:var(--text)}
 .notice{font-size:12px;color:var(--muted);line-height:1.5;margin-top:9px}
 .error{display:none;background:#ffedef;color:#96303d;border-radius:11px;padding:9px;font-size:12px;margin-top:9px}
 .list{display:grid;gap:8px}.item,.recipe-card,.project-card{border:1px solid var(--line);border-radius:13px;padding:11px}
@@ -72,10 +73,10 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 <body>
 <div class="wrap">
 <header>
-  <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 업로드 + 요리 프로젝트 + OneDrive 동기화</div></div>
+  <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 원본 보관 + 요리 프로젝트 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.4.0</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.4.1</div>
 <div id="storageBadge" class="update-connected" style="background:#f5f7ff;border-color:#d9def8;color:#4d5797">OneDrive 저장 상태 확인 중...</div>
 
 <div class="tabs">
@@ -138,7 +139,7 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
         </div>
         <div id="fileInfo" class="fileinfo"></div>
         <button id="parseDocx" class="primary full">Word에서 레시피 찾기</button>
-        <div class="notice">사진/스캔 이미지만 들어있는 Word 파일은 현재 버전에서 인식하지 않습니다.</div>
+        <div class="notice">업로드한 원본 Word 파일은 OneDrive에 자동 보관됩니다. 레시피를 삭제해도 원본 파일은 유지됩니다.<br>사진/스캔 이미지만 들어있는 Word 파일은 현재 버전에서 인식하지 않습니다.</div>
       </div>
 
       <div id="recipeError" class="error"></div>
@@ -168,6 +169,15 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
         <div id="recipeCount" class="badge"></div>
       </div>
       <div id="recipeList" class="list"></div>
+      <div style="border-top:1px solid var(--line);margin:18px 0 14px"></div>
+      <div class="itemrow">
+        <div>
+          <h2 style="margin-bottom:3px">원본 Word 보관함</h2>
+          <div class="notice" style="margin:0">OneDrive에 보관된 원본입니다. 레시피를 삭제해도 파일은 남습니다.</div>
+        </div>
+        <button id="refreshDocuments" class="small ghost">새로고침</button>
+      </div>
+      <div id="documentArchive" class="list" style="margin-top:10px"></div>
     </div>
   </div>
 </section>
@@ -223,6 +233,7 @@ let selectedDocx=null;
 let oneDriveAvailable=false;
 let oneDriveReady=false;
 let oneDrivePath="";
+let originalDocuments=[];
 let saveTimer=null;
 let saveChain=Promise.resolve();
 
@@ -454,7 +465,10 @@ $("parseDocx").onclick=async()=>{
     const d=await r.json();if(!r.ok)throw new Error(d.error||"Word 분석 실패");
     pendingRecipes=d;renderRecipePreview();
   }catch(e){showErr(e.message)}
-  finally{$("parseDocx").disabled=false;$("parseDocx").textContent="Word에서 레시피 찾기"}
+  finally{
+    $("parseDocx").disabled=false;$("parseDocx").textContent="Word에서 레시피 찾기";
+    loadDocumentArchive();
+  }
 };
 
 function renderRecipePreview(){
@@ -519,6 +533,7 @@ $("saveSelectedRecipes").onclick=()=>{
       id:newId,
       ...r,
       sourceFilename:pendingRecipes.sourceFilename||null,
+      sourceDocument:pendingRecipes.sourceDocument||null,
       createdAt:new Date().toISOString()
     });
     if(project){
@@ -653,6 +668,48 @@ function renderAssistant(){
     </div>`).join(""):'<div class="empty">저장된 항목이 없습니다.</div>';
 }
 
+function formatBytes(bytes){
+  const n=Number(bytes)||0;
+  if(n<1024)return `${n} B`;
+  if(n<1024*1024)return `${(n/1024).toFixed(1)} KB`;
+  return `${(n/1024/1024).toFixed(2)} MB`;
+}
+
+function documentDownloadUrl(storedName){
+  return `/api/documents/download?name=${encodeURIComponent(storedName||"")}`;
+}
+
+async function loadDocumentArchive(){
+  const box=$("documentArchive");
+  if(!box)return;
+  try{
+    const r=await fetch("/api/documents",{cache:"no-store"});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||"원본 보관함을 불러오지 못했습니다.");
+    originalDocuments=Array.isArray(d.documents)?d.documents:[];
+    renderDocumentArchive();
+  }catch(e){
+    box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderDocumentArchive(){
+  const box=$("documentArchive");
+  if(!box)return;
+  box.innerHTML=originalDocuments.length?originalDocuments.map(d=>`
+    <div class="item">
+      <div class="itemrow">
+        <div>
+          <div class="title">${esc(d.originalName||"Word 파일")}</div>
+          <div class="details">${esc(formatBytes(d.size))}${d.savedAt?` · ${esc(new Date(d.savedAt).toLocaleString())}`:""}</div>
+        </div>
+        <a class="btnlink" href="${documentDownloadUrl(d.storedName)}">다운로드</a>
+      </div>
+    </div>`).join(""):'<div class="empty">보관된 Word 원본이 없습니다.</div>';
+}
+
+$("refreshDocuments").onclick=loadDocumentArchive;
+
 function renderRecipes(){
   $("recipeCount").textContent=`${recipes.length}개`;
   $("recipeList").innerHTML=recipes.length?recipes.map(r=>`
@@ -666,7 +723,10 @@ function renderRecipes(){
             ${r.sourceFilename?` · ${esc(r.sourceFilename)}`:""}
           </div>
         </div>
-        <button class="small ghost danger" onclick="deleteRecipe('${r.id}')">삭제</button>
+        <div class="actions">
+          ${r.sourceDocument?.storedName?`<a class="btnlink" href="${documentDownloadUrl(r.sourceDocument.storedName)}">원본 다운로드</a>`:""}
+          <button class="small ghost danger" onclick="deleteRecipe('${r.id}')">삭제</button>
+        </div>
       </div>
       <div class="tablewrap" style="margin-top:8px"><table>
         <thead><tr><th>재료</th><th>기준량</th><th>전처리</th></tr></thead>
@@ -743,7 +803,7 @@ function renderProjectEditor(){
 
 $("activeCookingProject").onchange=renderProjectEditor;
 function renderAll(){renderAssistant();renderRecipes();renderCookingProjects()}
-apiConfig();renderAll();initializeOneDriveData();
+apiConfig();renderAll();initializeOneDriveData();loadDocumentArchive();
 </script>
 </body>
 </html>
