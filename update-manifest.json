@@ -1,10 +1,18 @@
 {
-  "version": "4.4.1",
+  "version": "4.4.2",
   "runNpmInstall": false,
   "files": [
     {
       "path": "document-store.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/document-store.js"
+    },
+    {
+      "path": "recipe-policy.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/recipe-policy.js"
+    },
+    {
+      "path": "public/recipe-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/recipe-utils.js"
     },
     {
       "path": "server.js",
