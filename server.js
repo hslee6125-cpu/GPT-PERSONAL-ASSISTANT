@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const mammoth = require("mammoth");
 const { createDocumentStore, originalFromStoredName } = require("./document-store");
+const { runRecipeParseWithRetry, isOutputLimitReason } = require("./recipe-policy");
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || "")
@@ -337,7 +338,7 @@ function httpsJsonRequest(options, payload, timeoutMs=30000) {
   });
 }
 
-async function callOpenAI(instructions, input, max_output_tokens=3000, schemaName=null, schema=null) {
+async function callOpenAI(instructions, input, max_output_tokens=3000, schemaName=null, schema=null, options={}) {
   if (!OPENAI_API_KEY) {
     const err = new Error("OPENAI_API_KEY가 설정되지 않았습니다.");
     err.code = "NO_API_KEY";
@@ -354,6 +355,10 @@ async function callOpenAI(instructions, input, max_output_tokens=3000, schemaNam
     input,
     max_output_tokens
   };
+
+  if (options.reasoningEffort) {
+    requestBody.reasoning = { effort: options.reasoningEffort };
+  }
 
   if (schemaName && schema) {
     requestBody.text = {
@@ -377,7 +382,7 @@ async function callOpenAI(instructions, input, max_output_tokens=3000, schemaNam
       headers: {
         "Authorization": `Bearer ${OPENAI_API_KEY}`
       }
-    }, requestBody, 45000);
+    }, requestBody, Number(options.timeoutMs) || 45000);
   } catch (e) {
     throw e;
   }
@@ -390,8 +395,10 @@ async function callOpenAI(instructions, input, max_output_tokens=3000, schemaNam
   }
 
   if (data?.status === "incomplete") {
-    const reason = data?.incomplete_details?.reason || "unknown";
-    throw new Error(`GPT 응답이 중간에 종료되었습니다 (${reason}). 다시 시도해 주세요.`);
+    const reason = String(data?.incomplete_details?.reason || "unknown");
+    const err = new Error(`GPT 응답이 중간에 종료되었습니다 (${reason}).`);
+    if (isOutputLimitReason(reason)) err.code = "MAX_OUTPUT_TOKENS";
+    throw err;
   }
 
   const raw = extractResponseText(data);
@@ -492,7 +499,16 @@ async function parseRecipes(text, sourceLabel) {
   if (text.length > 160000) {
     throw new Error("문서 내용이 너무 깁니다. 레시피 문서를 여러 파일로 나눠 업로드해 주세요.");
   }
-  const result = await callOpenAI(recipeInstructions(sourceLabel), text, 6500, "recipe_document", RECIPE_SCHEMA);
+  const result = await runRecipeParseWithRetry(({maxOutputTokens, reasoningEffort}) =>
+    callOpenAI(
+      recipeInstructions(sourceLabel),
+      text,
+      maxOutputTokens,
+      "recipe_document",
+      RECIPE_SCHEMA,
+      { reasoningEffort, timeoutMs: 120000 }
+    )
+  );
   if (!Array.isArray(result?.recipes)) {
     throw new Error("GPT가 레시피 목록을 올바르게 반환하지 않았습니다.");
   }
