@@ -1,16 +1,56 @@
 {
-  "version": "4.2.0",
+  "version": "4.3.0",
   "runNpmInstall": false,
   "files": [
     {
       "path": "server.js",
-      "url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/server.js",
-      "sha256": "REPLACE_WITH_SHA256"
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server.js",
+      "sha256": "80e29c68f94e51a95d040b1631c26491f1e4cb8c1ad795b8ed70cb55cf620f17"
     },
     {
       "path": "public/index.html",
-      "url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/public/index.html",
-      "sha256": "REPLACE_WITH_SHA256"
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html",
+      "sha256": "4cc718d86d07a00444bfea09c279bca10665cc0c8e234efdc5f95a84214030b8"
+    },
+    {
+      "path": "package.json",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/package.json",
+      "sha256": "fdaeb4e7365a9d25b4692d53eac8b7f9f9620177cd2916462a3dfa62a388ea45"
+    },
+    {
+      "path": "updater.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/updater.js",
+      "sha256": "8b5264893b25d31392efeca9a2c566d61be2aad1e72511a5a90eb3f191a4a931"
+    },
+    {
+      "path": "launcher.ps1",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/launcher.ps1",
+      "sha256": "e33f6b47cb351f11fef7aeaa59b98cc1b44d8a1fadea5210558ab10d8382175a"
+    },
+    {
+      "path": "launcher.vbs",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/launcher.vbs",
+      "sha256": "e480356405b3fe236da4cedfb3c535acb0dfac3a5af7b8ded5c1f18e1b23c8f6"
+    },
+    {
+      "path": "초기설정.ps1",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/%EC%B4%88%EA%B8%B0%EC%84%A4%EC%A0%95.ps1",
+      "sha256": "497b2d0239f8c095261ee8f828118e8dae8a84faed13dd31bc849794b8a4052c"
+    },
+    {
+      "path": "개인비서_초기설정.cmd",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/%EA%B0%9C%EC%9D%B8%EB%B9%84%EC%84%9C_%EC%B4%88%EA%B8%B0%EC%84%A4%EC%A0%95.cmd",
+      "sha256": "9a047ea77f383e1e95c9a1855beffd98f6dde9bacf2b89116bc2552fd055bb05"
+    },
+    {
+      "path": "assistant.ico",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/assistant.ico",
+      "sha256": "498df376ab3805ac5a4bfff537f206981ea0cf07edd92043b024585a6c36b320"
+    },
+    {
+      "path": "README.md",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/README.md",
+      "sha256": "5fbab2341e1f188dc529f1757613b6914b8b57c2c4d5b8a04248b76cd081ae98"
     }
   ]
 }
