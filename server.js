@@ -14,6 +14,164 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5-nano";
 const PUBLIC_DIR = path.join(__dirname, "public");
 const APP_VERSION = fs.existsSync(path.join(__dirname, "VERSION")) ? fs.readFileSync(path.join(__dirname, "VERSION"), "utf8").trim() : "unknown";
 
+
+// ---------- OneDrive user data storage ----------
+function detectOneDriveRoot() {
+  const candidates = [
+    process.env.OneDrive,
+    process.env.OneDriveConsumer,
+    process.env.OneDriveCommercial,
+    process.env.USERPROFILE ? path.join(process.env.USERPROFILE, "OneDrive") : null
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return path.resolve(candidate);
+      }
+    } catch {}
+  }
+  return null;
+}
+
+const ONEDRIVE_ROOT = detectOneDriveRoot();
+const USER_DATA_ROOT = ONEDRIVE_ROOT ? path.join(ONEDRIVE_ROOT, "GPT Personal Assistant") : null;
+const USER_DATA_DIR = USER_DATA_ROOT ? path.join(USER_DATA_ROOT, "Data") : null;
+const USER_BACKUP_DIR = USER_DATA_ROOT ? path.join(USER_DATA_ROOT, "Backups") : null;
+const USER_DATA_FILE = USER_DATA_DIR ? path.join(USER_DATA_DIR, "assistant-data.json") : null;
+const BACKUP_INTERVAL_MS = 30 * 60 * 1000;
+const MAX_BACKUPS = 100;
+
+function defaultState() {
+  return {
+    schemaVersion: 1,
+    assistant: [],
+    recipes: [],
+    cooking: [],
+    updatedAt: null
+  };
+}
+
+function normalizeState(input) {
+  const source = input && typeof input === "object" ? input : {};
+  return {
+    schemaVersion: 1,
+    assistant: Array.isArray(source.assistant) ? source.assistant : [],
+    recipes: Array.isArray(source.recipes) ? source.recipes : [],
+    cooking: Array.isArray(source.cooking) ? source.cooking : [],
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function ensureUserDataDirs() {
+  if (!USER_DATA_DIR || !USER_BACKUP_DIR) return false;
+  fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+  fs.mkdirSync(USER_BACKUP_DIR, { recursive: true });
+  return true;
+}
+
+function readUserState() {
+  if (!USER_DATA_FILE || !fs.existsSync(USER_DATA_FILE)) return null;
+  const raw = fs.readFileSync(USER_DATA_FILE, "utf8").replace(/^\uFEFF/, "");
+  const parsed = JSON.parse(raw);
+  return normalizeState(parsed);
+}
+
+function backupNameFromDate(d = new Date()) {
+  const pad = n => String(n).padStart(2, "0");
+  return [
+    d.getFullYear(),
+    pad(d.getMonth() + 1),
+    pad(d.getDate())
+  ].join("-") + "_" + [
+    pad(d.getHours()),
+    pad(d.getMinutes()),
+    pad(d.getSeconds())
+  ].join("-") + ".json";
+}
+
+function latestBackupMtime() {
+  if (!USER_BACKUP_DIR || !fs.existsSync(USER_BACKUP_DIR)) return 0;
+  let latest = 0;
+  for (const name of fs.readdirSync(USER_BACKUP_DIR)) {
+    if (!name.toLowerCase().endsWith(".json")) continue;
+    try {
+      const m = fs.statSync(path.join(USER_BACKUP_DIR, name)).mtimeMs;
+      if (m > latest) latest = m;
+    } catch {}
+  }
+  return latest;
+}
+
+function pruneBackups() {
+  if (!USER_BACKUP_DIR || !fs.existsSync(USER_BACKUP_DIR)) return;
+  const entries = fs.readdirSync(USER_BACKUP_DIR)
+    .filter(name => name.toLowerCase().endsWith(".json"))
+    .map(name => {
+      const full = path.join(USER_BACKUP_DIR, name);
+      let mtimeMs = 0;
+      try { mtimeMs = fs.statSync(full).mtimeMs; } catch {}
+      return { full, mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  for (const item of entries.slice(MAX_BACKUPS)) {
+    try { fs.rmSync(item.full, { force: true }); } catch {}
+  }
+}
+
+function maybeBackupCurrent(force = false) {
+  if (!USER_DATA_FILE || !fs.existsSync(USER_DATA_FILE)) return;
+  ensureUserDataDirs();
+  const latest = latestBackupMtime();
+  if (!force && Date.now() - latest < BACKUP_INTERVAL_MS) return;
+
+  const backupPath = path.join(USER_BACKUP_DIR, backupNameFromDate());
+  fs.copyFileSync(USER_DATA_FILE, backupPath);
+  pruneBackups();
+}
+
+function writeUserState(input, options = {}) {
+  if (!ONEDRIVE_ROOT || !USER_DATA_FILE) {
+    const err = new Error("OneDrive 폴더를 찾지 못했습니다.");
+    err.code = "NO_ONEDRIVE";
+    throw err;
+  }
+
+  ensureUserDataDirs();
+  const state = normalizeState(input);
+  const content = JSON.stringify(state, null, 2) + "\n";
+
+  // Back up the previous good state periodically before replacing it.
+  maybeBackupCurrent(Boolean(options.forceBackup));
+
+  const tmp = USER_DATA_FILE + ".tmp";
+  fs.writeFileSync(tmp, content, "utf8");
+
+  // Validate the just-written temporary file before replacing the current one.
+  JSON.parse(fs.readFileSync(tmp, "utf8"));
+
+  try {
+    fs.renameSync(tmp, USER_DATA_FILE);
+  } catch {
+    if (fs.existsSync(USER_DATA_FILE)) fs.rmSync(USER_DATA_FILE, { force: true });
+    fs.renameSync(tmp, USER_DATA_FILE);
+  }
+
+  return state;
+}
+
+function storageInfo() {
+  const exists = Boolean(USER_DATA_FILE && fs.existsSync(USER_DATA_FILE));
+  return {
+    available: Boolean(ONEDRIVE_ROOT),
+    provider: ONEDRIVE_ROOT ? "OneDrive" : null,
+    root: USER_DATA_ROOT,
+    dataFile: USER_DATA_FILE,
+    exists
+  };
+}
+
 const mime = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -435,8 +593,58 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, JSON.stringify({
         configured: Boolean(OPENAI_API_KEY),
         model: OPENAI_MODEL,
-        version: APP_VERSION
+        version: APP_VERSION,
+        storage: storageInfo()
       }));
+    }
+
+
+    if (req.method === "GET" && req.url === "/api/data") {
+      const info = storageInfo();
+      if (!info.available) {
+        return send(res, 200, JSON.stringify({
+          ...info,
+          state: null
+        }));
+      }
+
+      let state = null;
+      let error = null;
+      try {
+        state = readUserState();
+      } catch (e) {
+        error = e?.message || "OneDrive 데이터 파일을 읽지 못했습니다.";
+      }
+
+      return send(res, 200, JSON.stringify({
+        ...info,
+        state,
+        error
+      }));
+    }
+
+    if (req.method === "POST" && req.url === "/api/data") {
+      const payload = await readJsonBody(req, 12_000_000);
+      const state = payload?.state;
+      if (!state || typeof state !== "object") {
+        return send(res, 400, JSON.stringify({error:"저장할 데이터가 없습니다."}));
+      }
+
+      try {
+        const saved = writeUserState(state, {
+          forceBackup: payload?.reason === "manual-backup"
+        });
+        return send(res, 200, JSON.stringify({
+          ok: true,
+          storage: storageInfo(),
+          updatedAt: saved.updatedAt
+        }));
+      } catch (e) {
+        const status = e?.code === "NO_ONEDRIVE" ? 503 : 500;
+        return send(res, status, JSON.stringify({
+          error: e?.message || "OneDrive 저장에 실패했습니다."
+        }));
+      }
     }
 
     if (req.method === "POST" && req.url === "/api/analyze") {
@@ -495,5 +703,6 @@ server.listen(PORT, "127.0.0.1", () => {
   console.log(`http://127.0.0.1:${PORT}`);
   console.log(`Model: ${OPENAI_MODEL}`);
   console.log(`API key: ${OPENAI_API_KEY ? "configured" : "NOT configured"}`);
+  console.log(`OneDrive: ${ONEDRIVE_ROOT || "NOT DETECTED"}`);
   console.log("");
 });
