@@ -682,6 +682,21 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (req.method === "DELETE" && String(req.url || "").startsWith("/api/documents?")) {
+      if (!DOCUMENT_STORE) {
+        return send(res, 503, JSON.stringify({error:"OneDrive 원본 파일 보관함을 사용할 수 없습니다."}));
+      }
+      const requestUrl = new URL(req.url, `http://127.0.0.1:${PORT}`);
+      const storedName = requestUrl.searchParams.get("name") || "";
+      try {
+        const deleted = DOCUMENT_STORE.deleteDocx(storedName);
+        if (!deleted) return send(res, 404, JSON.stringify({error:"원본 Word 파일을 찾지 못했습니다."}));
+        return send(res, 200, JSON.stringify({ok:true}));
+      } catch (e) {
+        return send(res, 400, JSON.stringify({error:e?.message || "원본 Word 파일을 삭제하지 못했습니다."}));
+      }
+    }
+
     if (req.method === "GET" && String(req.url || "").startsWith("/api/documents/download?")) {
       if (!DOCUMENT_STORE) {
         return send(res, 503, JSON.stringify({error:"OneDrive 원본 파일 보관함을 사용할 수 없습니다."}));
