@@ -1,5 +1,5 @@
 {
-  "enabled": false,
-  "manifestUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/update-manifest.json",
+  "enabled": true,
+  "manifestUrl": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/update-manifest.json",
   "timeoutMs": 15000
 }
