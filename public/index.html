@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.4.2</title>
+<title>GPT Personal Assistant v4.4.3</title>
 <style>
 :root{
   --bg:#f6f7fb;--card:#fff;--text:#17181d;--muted:#747985;--line:#e6e8ef;
@@ -76,7 +76,7 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
   <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 원본 보관 + 요리 프로젝트 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.4.2</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.4.3</div>
 <div id="storageBadge" class="update-connected" style="background:#f5f7ff;border-color:#d9def8;color:#4d5797">OneDrive 저장 상태 확인 중...</div>
 
 <div class="tabs">
@@ -695,17 +695,41 @@ async function loadDocumentArchive(){
   }
 }
 
+async function deleteOriginalDocument(index){
+  const doc=originalDocuments[index];
+  if(!doc)return;
+  const filename=doc.originalName||"Word 파일";
+  if(!confirm(`원본 Word 파일을 삭제할까요?\n\n${filename}\n\n삭제하면 복구할 수 없습니다.`))return;
+
+  try{
+    const r=await fetch(`/api/documents?name=${encodeURIComponent(doc.storedName||"")}`,{method:"DELETE"});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||"원본 Word 파일을 삭제하지 못했습니다.");
+
+    recipes=RecipeUtils.unlinkSourceDocumentFromRecipes(recipes,doc.storedName);
+    originalDocuments=originalDocuments.filter((_,i)=>i!==index);
+    persist();
+    renderDocumentArchive();
+  }catch(e){
+    alert(e.message||"원본 Word 파일을 삭제하지 못했습니다.");
+  }
+}
+window.deleteOriginalDocument=deleteOriginalDocument;
+
 function renderDocumentArchive(){
   const box=$("documentArchive");
   if(!box)return;
-  box.innerHTML=originalDocuments.length?originalDocuments.map(d=>`
+  box.innerHTML=originalDocuments.length?originalDocuments.map((d,index)=>`
     <div class="item">
       <div class="itemrow">
         <div>
           <div class="title">${esc(d.originalName||"Word 파일")}</div>
           <div class="details">${esc(formatBytes(d.size))}${d.savedAt?` · ${esc(new Date(d.savedAt).toLocaleString())}`:""}</div>
         </div>
-        <a class="btnlink" href="${documentDownloadUrl(d.storedName)}">다운로드</a>
+        <div class="actions">
+          <a class="btnlink" href="${documentDownloadUrl(d.storedName)}">다운로드</a>
+          <button class="small ghost danger" onclick="deleteOriginalDocument(${index})">삭제</button>
+        </div>
       </div>
     </div>`).join(""):'<div class="empty">보관된 Word 원본이 없습니다.</div>';
 }
