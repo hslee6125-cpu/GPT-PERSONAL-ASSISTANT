@@ -1,0 +1,15 @@
+{
+  "name": "gpt-personal-assistant-v4",
+  "version": "4.1.0",
+  "private": true,
+  "description": "Personal assistant + recipe manager + DOCX recipe import",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "update": "node updater.js",
+    "manifest": "node tools/build-update-manifest.js"
+  },
+  "dependencies": {
+    "mammoth": "^1.10.0"
+  }
+}

@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GPT Personal Assistant v4</title>
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--text:#17181d;--muted:#747985;--line:#e6e8ef;
+  --accent:#5265e8;--accent2:#eef0ff;--danger:#ba3a48;--ok:#21764a;
+  --r:17px;--shadow:0 10px 30px rgba(35,40,65,.07)
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif}
+.wrap{max-width:1240px;margin:auto;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+h1{margin:0;font-size:25px}.sub{font-size:12px;color:var(--muted);margin-top:5px}
+.badge{font-size:11px;padding:6px 9px;border-radius:999px;background:#eee}.badge.ok{background:#e7f6ee;color:var(--ok)}.badge.bad{background:#ffeaed;color:var(--danger)}
+.tabs,.subtabs{display:flex;gap:7px;flex-wrap:wrap}.tabs{margin-bottom:14px}.subtabs{margin-bottom:12px}
+.tab,.subtab{background:#fff;border:1px solid var(--line);color:#555;padding:10px 13px}
+.tab.active,.subtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.view,.recipe-source{display:none}.view.active,.recipe-source.active{display:block}.pad{padding:17px}
+.grid2{display:grid;grid-template-columns:.92fr 1.58fr;gap:16px}
+h2{font-size:17px;margin:0 0 12px}h3{font-size:14px;margin:16px 0 8px}
+label{display:block;font-size:11px;font-weight:800;color:#59606b;margin:11px 0 6px}
+textarea,input,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;font:inherit;outline:none}
+textarea{min-height:180px;resize:vertical;line-height:1.5}
+textarea:focus,input:focus,select:focus{border-color:#aab4ff;box-shadow:0 0 0 3px var(--accent2)}
+button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:pointer}
+.primary{background:var(--accent);color:white}.ghost{background:#fff;border:1px solid var(--line)}.danger{color:var(--danger)}.full{width:100%;margin-top:10px}
+.notice{font-size:12px;color:var(--muted);line-height:1.5;margin-top:9px}
+.error{display:none;background:#ffedef;color:#96303d;border-radius:11px;padding:9px;font-size:12px;margin-top:9px}
+.list{display:grid;gap:8px}.item,.recipe-card,.project-card{border:1px solid var(--line);border-radius:13px;padding:11px}
+.title,.recipe-title{font-weight:850;font-size:13px}.details{font-size:12px;color:#535a66;line-height:1.45;margin-top:4px;white-space:pre-wrap}
+.meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.chip{font-size:10px;border-radius:999px;padding:4px 7px;background:#f0f2f6;color:#59606a}.high{background:#ffe9ed;color:#96303c}.medium{background:#fff4da;color:#84630e}.low{background:#e9f4ff;color:#2a6493}
+.itemrow,.recipe-head,.preview-head,.totalbar{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.actions{display:flex;gap:5px;flex-wrap:wrap}.small{font-size:11px;padding:6px 8px}
+.empty{border:1px dashed var(--line);padding:14px;border-radius:12px;text-align:center;color:var(--muted);font-size:12px}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:13px}table{border-collapse:collapse;width:100%;min-width:620px}th,td{text-align:left;padding:10px 11px;border-bottom:1px solid var(--line);font-size:12px}th{background:#fafbfc;font-size:11px;color:#5c626e}tr:last-child td{border-bottom:0}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.kpi{border:1px solid var(--line);border-radius:12px;padding:10px}.kpi b{display:block;font-size:20px}.kpi span{font-size:10px;color:var(--muted)}
+.recipe-sub{font-size:11px;color:var(--muted);margin-top:3px}.project-recipes{margin-top:9px;display:grid;gap:7px}.project-recipe{display:grid;grid-template-columns:1fr 100px auto;gap:7px;align-items:center;padding:8px;background:#f8f9fb;border-radius:10px}
+.project-selector{display:flex;gap:7px;align-items:center}.project-selector select{min-width:220px}
+.dropzone{border:2px dashed #cfd4e3;border-radius:15px;padding:24px 15px;text-align:center;background:#fafbfe;cursor:pointer;transition:.15s}
+.dropzone:hover,.dropzone.drag{border-color:#98a4f5;background:var(--accent2)}.dropzone b{display:block;margin-bottom:6px}.dropzone span{font-size:12px;color:var(--muted)}
+.fileinfo{margin-top:10px;font-size:12px;background:#f5f6f9;border-radius:10px;padding:9px;display:none}
+.preview-area{display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.recipe-select-card{border:1px solid var(--line);border-radius:14px;padding:12px}.recipe-select-top{display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:start}.recipe-check{width:18px;height:18px;accent-color:var(--accent)}
+.preview-summary{font-size:12px;color:#535a66;background:#f7f8fb;border-radius:11px;padding:10px;line-height:1.5;margin-bottom:9px}
+.savebar{position:sticky;bottom:8px;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:13px;padding:10px;margin-top:10px;display:flex;gap:8px;align-items:end}
+.savebar>div{flex:1}.savebar label{margin-top:0}
+@media(max-width:900px){
+  .wrap{padding:12px}.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}
+  header{align-items:flex-start;flex-direction:column}.project-recipe{grid-template-columns:1fr}
+  .project-selector{flex-direction:column;align-items:stretch}.project-selector select{min-width:0}
+  .savebar{flex-direction:column;align-items:stretch}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 업로드 + 요리 프로젝트 재료 합산</div></div>
+  <div id="apiBadge" class="badge">API 확인 중</div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-view="assistant">개인 비서</button>
+  <button class="tab" data-view="recipes">레시피</button>
+  <button class="tab" data-view="cooking">요리 프로젝트</button>
+</div>
+
+<section id="assistant" class="view active">
+  <div class="grid2">
+    <div class="card pad">
+      <h2>비서에게 말하기</h2>
+      <textarea id="inboxText" placeholder="예) 10월 워홀 신청 준비. 잔고증명서와 여권 사본 준비. 일본 취업은 장기 프로젝트로 관리."></textarea>
+      <button id="analyzeInbox" class="primary full">GPT로 정리해서 저장</button>
+      <div id="inboxError" class="error"></div>
+      <div class="notice">GPT는 문장 해석과 분류에 사용합니다. 저장 데이터는 이 브라우저에 보관됩니다.</div>
+    </div>
+    <div class="card pad">
+      <div class="kpis">
+        <div class="kpi"><b id="todoKpi">0</b><span>할 일</span></div>
+        <div class="kpi"><b id="memoKpi">0</b><span>메모</span></div>
+        <div class="kpi"><b id="projKpi">0</b><span>장기 프로젝트</span></div>
+        <div class="kpi"><b id="doneKpi">0</b><span>완료</span></div>
+      </div>
+      <div id="assistantList" class="list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="recipes" class="view">
+  <div class="grid2">
+    <div class="card pad">
+      <h2>레시피 가져오기</h2>
+      <div class="subtabs">
+        <button class="subtab active" data-source="manualRecipe">직접 입력</button>
+        <button class="subtab" data-source="wordRecipe">Word 업로드</button>
+      </div>
+
+      <div id="manualRecipe" class="recipe-source active">
+        <textarea id="recipeText" placeholder="레시피가 여러 개여도 한 번에 입력할 수 있습니다.
+
+예)
+민어 무스
+기준 10인분
+민어살 500g
+생크림 200g
+
+동치미 젤리
+기준 10인분
+동치미 국물 250ml
+젤라틴 5g"></textarea>
+        <button id="parseRecipeText" class="primary full">GPT로 레시피 분석</button>
+      </div>
+
+      <div id="wordRecipe" class="recipe-source">
+        <input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+        <div id="dropzone" class="dropzone">
+          <b>Word(.docx) 파일 선택</b>
+          <span>여기를 클릭하거나 파일을 끌어다 놓으세요.<br>일반 텍스트와 Word 표를 읽습니다.</span>
+        </div>
+        <div id="fileInfo" class="fileinfo"></div>
+        <button id="parseDocx" class="primary full">Word에서 레시피 찾기</button>
+        <div class="notice">사진/스캔 이미지만 들어있는 Word 파일은 현재 버전에서 인식하지 않습니다.</div>
+      </div>
+
+      <div id="recipeError" class="error"></div>
+
+      <div id="recipePreview" class="preview-area">
+        <div class="preview-head">
+          <h2 style="margin:0">발견된 레시피</h2>
+          <span id="foundCount" class="badge"></span>
+        </div>
+        <div id="documentSummary" class="preview-summary"></div>
+        <div id="recipePreviewList" class="list"></div>
+
+        <div class="savebar">
+          <div>
+            <label>저장 후 요리 프로젝트에 연결</label>
+            <select id="saveToProject"></select>
+          </div>
+          <button id="cancelRecipePreview" class="ghost">취소</button>
+          <button id="saveSelectedRecipes" class="primary">선택 레시피 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div class="itemrow">
+        <h2>레시피 데이터베이스</h2>
+        <div id="recipeCount" class="badge"></div>
+      </div>
+      <div id="recipeList" class="list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="cooking" class="view">
+  <div class="grid2">
+    <div>
+      <div class="card pad">
+        <h2>요리 프로젝트 만들기</h2>
+        <label>프로젝트명</label>
+        <input id="cookingProjectName" placeholder="예) 2026가을">
+        <label>메모</label>
+        <textarea id="cookingProjectNote" style="min-height:90px" placeholder="예) 10월 디너 코스 / 40명 기준"></textarea>
+        <button id="createCookingProject" class="primary full">프로젝트 생성</button>
+      </div>
+      <div class="card pad" style="margin-top:14px">
+        <h2>요리 프로젝트 목록</h2>
+        <div id="cookingProjectList" class="list"></div>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div class="totalbar">
+        <div>
+          <h2 style="margin-bottom:3px">프로젝트 재료 총정리</h2>
+          <div class="notice" style="margin:0">레시피별 목표 인분을 기준으로 프로그램이 직접 계산합니다.</div>
+        </div>
+        <div class="project-selector">
+          <select id="activeCookingProject"></select>
+        </div>
+      </div>
+      <div id="projectEditor"></div>
+      <h3>전체 재료 합산</h3>
+      <div class="notice" style="margin-bottom:8px">g↔kg, ml↔L는 자동 통합합니다. 나머지는 같은 단위끼리 합산합니다.</div>
+      <div id="ingredientTotals"></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+const KEYS={
+  assistant:"gpt_pa_v4_assistant",
+  recipes:"gpt_pa_v4_recipes",
+  cooking:"gpt_pa_v4_cooking"
+};
+
+let assistant=JSON.parse(localStorage.getItem(KEYS.assistant)||"[]");
+let recipes=JSON.parse(localStorage.getItem(KEYS.recipes)||"[]");
+let cooking=JSON.parse(localStorage.getItem(KEYS.cooking)||"[]");
+let pendingRecipes=null;
+let selectedDocx=null;
+
+const $=id=>document.getElementById(id);
+const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random();
+const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+
+function persist(){
+  localStorage.setItem(KEYS.assistant,JSON.stringify(assistant));
+  localStorage.setItem(KEYS.recipes,JSON.stringify(recipes));
+  localStorage.setItem(KEYS.cooking,JSON.stringify(cooking));
+  renderAll();
+}
+
+async function apiConfig(){
+  try{
+    const r=await fetch("/api/config"),d=await r.json();
+    $("apiBadge").textContent=d.configured?`GPT 연결됨 · ${d.model} · v${d.version||"?"}`:`API 키 필요 · v${d.version||"?"}`;
+    $("apiBadge").className="badge "+(d.configured?"ok":"bad");
+  }catch{
+    $("apiBadge").textContent="서버 연결 실패";
+    $("apiBadge").className="badge bad";
+  }
+}
+function showErr(msg){$("recipeError").textContent=msg;$("recipeError").style.display="block"}
+function hideErr(){$("recipeError").style.display="none"}
+
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");$(b.dataset.view).classList.add("active");
+});
+
+document.querySelectorAll(".subtab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".subtab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".recipe-source").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");$(b.dataset.source).classList.add("active");
+});
+
+$("analyzeInbox").onclick=async()=>{
+  const text=$("inboxText").value.trim();
+  if(!text)return;
+  $("analyzeInbox").disabled=true;
+  try{
+    const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text,currentDate:today()})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||"분석 실패");
+    for(const x of (d.items||[]))assistant.unshift({id:uid(),...x,done:false,createdAt:new Date().toISOString()});
+    $("inboxText").value="";persist();
+  }catch(e){alert(e.message)}finally{$("analyzeInbox").disabled=false}
+};
+
+function toggleAssistant(id){const x=assistant.find(x=>x.id===id);if(x){x.done=!x.done;persist()}}
+function deleteAssistant(id){assistant=assistant.filter(x=>x.id!==id);persist()}
+window.toggleAssistant=toggleAssistant;window.deleteAssistant=deleteAssistant;
+
+async function parseTextRecipes(){
+  const text=$("recipeText").value.trim();
+  if(!text)return showErr("레시피 내용을 입력해 주세요.");
+  hideErr();$("parseRecipeText").disabled=true;
+  try{
+    const r=await fetch("/api/parse-recipes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||"레시피 분석 실패");
+    pendingRecipes={...d,sourceFilename:null};
+    renderRecipePreview();
+  }catch(e){showErr(e.message)}finally{$("parseRecipeText").disabled=false}
+}
+$("parseRecipeText").onclick=parseTextRecipes;
+
+function setDocxFile(file){
+  if(!file)return;
+  if(!file.name.toLowerCase().endsWith(".docx")){
+    selectedDocx=null;$("fileInfo").style.display="none";
+    return showErr(".docx Word 파일만 선택해 주세요.");
+  }
+  if(file.size>20*1024*1024){
+    selectedDocx=null;$("fileInfo").style.display="none";
+    return showErr("Word 파일은 20MB 이하로 업로드해 주세요.");
+  }
+  hideErr();selectedDocx=file;
+  $("fileInfo").textContent=`선택됨: ${file.name} · ${(file.size/1024/1024).toFixed(2)} MB`;
+  $("fileInfo").style.display="block";
+}
+$("docxFile").onchange=e=>setDocxFile(e.target.files[0]);
+$("dropzone").onclick=()=>$("docxFile").click();
+$("dropzone").ondragover=e=>{e.preventDefault();$("dropzone").classList.add("drag")};
+$("dropzone").ondragleave=()=>$("dropzone").classList.remove("drag");
+$("dropzone").ondrop=e=>{
+  e.preventDefault();$("dropzone").classList.remove("drag");
+  setDocxFile(e.dataTransfer.files[0]);
+};
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result).split(",")[1]||"");
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+$("parseDocx").onclick=async()=>{
+  if(!selectedDocx)return showErr("Word 파일을 먼저 선택해 주세요.");
+  hideErr();$("parseDocx").disabled=true;$("parseDocx").textContent="Word 분석 중...";
+  try{
+    const base64=await fileToBase64(selectedDocx);
+    const r=await fetch("/api/parse-docx",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({filename:selectedDocx.name,base64})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||"Word 분석 실패");
+    pendingRecipes=d;renderRecipePreview();
+  }catch(e){showErr(e.message)}
+  finally{$("parseDocx").disabled=false;$("parseDocx").textContent="Word에서 레시피 찾기"}
+};
+
+function renderRecipePreview(){
+  if(!pendingRecipes)return;
+  const rs=pendingRecipes.recipes||[];
+  $("foundCount").textContent=`${rs.length}개 발견`;
+  $("documentSummary").textContent=(pendingRecipes.sourceFilename?`${pendingRecipes.sourceFilename} · `:"")+(pendingRecipes.documentSummary||"");
+  $("recipePreviewList").innerHTML=rs.map((r,i)=>`
+    <div class="recipe-select-card">
+      <div class="recipe-select-top">
+        <input id="recipeCheck-${i}" class="recipe-check" type="checkbox" checked>
+        <div>
+          <div class="recipe-title">${esc(r.name||"이름 없음")}</div>
+          <div class="recipe-sub">
+            기준 ${esc(r.baseServings??"-")}인분
+            ${r.yieldAmount?` · 완성량 ${esc(r.yieldAmount)}${esc(r.yieldUnit||"")}`:""}
+            · 재료 ${(r.ingredients||[]).length}개
+          </div>
+        </div>
+      </div>
+      <div class="tablewrap" style="margin-top:8px">
+        <table>
+          <thead><tr><th>재료</th><th>양</th><th>단위</th><th>전처리</th></tr></thead>
+          <tbody>${(r.ingredients||[]).map(ing=>`
+            <tr>
+              <td>${esc(ing.name)}</td>
+              <td>${esc(ing.amount??ing.rawAmount??"")}</td>
+              <td>${esc(ing.unit||"")}</td>
+              <td>${esc(ing.prep||"")}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+      ${r.notes?`<div class="details" style="margin-top:8px"><b>메모:</b> ${esc(r.notes)}</div>`:""}
+    </div>`).join("");
+
+  updateProjectSaveSelect();
+  $("recipePreview").style.display="block";
+}
+
+function updateProjectSaveSelect(){
+  const sel=$("saveToProject"),prev=sel.value;
+  sel.innerHTML='<option value="">연결 안 함</option>'+cooking.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  if(cooking.some(p=>p.id===prev))sel.value=prev;
+}
+
+$("cancelRecipePreview").onclick=()=>{
+  pendingRecipes=null;$("recipePreview").style.display="none";
+};
+
+$("saveSelectedRecipes").onclick=()=>{
+  if(!pendingRecipes)return;
+  const selected=(pendingRecipes.recipes||[]).filter((_,i)=>$("recipeCheck-"+i)?.checked);
+  if(!selected.length)return alert("저장할 레시피를 하나 이상 선택해 주세요.");
+
+  const projectId=$("saveToProject").value;
+  const project=cooking.find(p=>p.id===projectId);
+
+  for(const r of selected){
+    const newId=uid();
+    recipes.unshift({
+      id:newId,
+      ...r,
+      sourceFilename:pendingRecipes.sourceFilename||null,
+      createdAt:new Date().toISOString()
+    });
+    if(project){
+      project.recipes=project.recipes||[];
+      project.recipes.push({
+        recipeId:newId,
+        targetServings:Number(r.baseServings)||1
+      });
+    }
+  }
+
+  const count=selected.length;
+  pendingRecipes=null;
+  $("recipePreview").style.display="none";
+  $("recipeText").value="";
+  selectedDocx=null;
+  $("docxFile").value="";
+  $("fileInfo").style.display="none";
+  persist();
+  alert(`${count}개 레시피를 저장했습니다${project?` · ${project.name} 프로젝트에 연결했습니다`:""}.`);
+};
+
+function deleteRecipe(id){
+  if(!confirm("레시피를 삭제할까요?"))return;
+  recipes=recipes.filter(r=>r.id!==id);
+  for(const p of cooking)p.recipes=(p.recipes||[]).filter(x=>x.recipeId!==id);
+  persist();
+}
+window.deleteRecipe=deleteRecipe;
+
+$("createCookingProject").onclick=()=>{
+  const name=$("cookingProjectName").value.trim();
+  if(!name)return alert("프로젝트명을 입력하세요.");
+  cooking.unshift({
+    id:uid(),name,note:$("cookingProjectNote").value.trim(),
+    recipes:[],createdAt:new Date().toISOString()
+  });
+  $("cookingProjectName").value="";
+  $("cookingProjectNote").value="";
+  persist();
+};
+
+function deleteCookingProject(id){
+  if(!confirm("요리 프로젝트를 삭제할까요?"))return;
+  cooking=cooking.filter(p=>p.id!==id);persist();
+}
+window.deleteCookingProject=deleteCookingProject;
+
+function addRecipeToProject(projectId){
+  const sel=document.getElementById("recipePicker-"+projectId);
+  const recipeId=sel?.value;if(!recipeId)return;
+  const p=cooking.find(x=>x.id===projectId),r=recipes.find(x=>x.id===recipeId);
+  if(!p||!r)return;
+  if((p.recipes||[]).some(x=>x.recipeId===recipeId))return alert("이미 들어간 레시피입니다.");
+  p.recipes=p.recipes||[];
+  p.recipes.push({recipeId,targetServings:Number(r.baseServings)||1});
+  persist();
+}
+window.addRecipeToProject=addRecipeToProject;
+
+function removeRecipeFromProject(projectId,recipeId){
+  const p=cooking.find(x=>x.id===projectId);if(!p)return;
+  p.recipes=(p.recipes||[]).filter(x=>x.recipeId!==recipeId);persist();
+}
+window.removeRecipeFromProject=removeRecipeFromProject;
+
+function setTargetServings(projectId,recipeId,value){
+  const p=cooking.find(x=>x.id===projectId);
+  const u=(p?.recipes||[]).find(x=>x.recipeId===recipeId);
+  if(u){u.targetServings=Math.max(0,Number(value)||0);persist()}
+}
+window.setTargetServings=setTargetServings;
+
+function normalizeUnit(unit,amount){
+  const u=String(unit||"").trim().toLowerCase();
+  const n=Number(amount);
+  if(!Number.isFinite(n))return {unit:unit||"",amount:null};
+  if(["kg","킬로","킬로그램"].includes(u))return {unit:"g",amount:n*1000};
+  if(["g","그램"].includes(u))return {unit:"g",amount:n};
+  if(["l","리터"].includes(u))return {unit:"ml",amount:n*1000};
+  if(["ml","밀리리터"].includes(u))return {unit:"ml",amount:n};
+  return {unit:unit||"",amount:n};
+}
+function trimNum(n){return Number(n.toFixed(3)).toLocaleString("ko-KR",{maximumFractionDigits:3})}
+function prettyAmount(amount,unit){
+  if(!Number.isFinite(amount))return "-";
+  if(unit==="g"&&amount>=1000)return `${trimNum(amount/1000)} kg`;
+  if(unit==="ml"&&amount>=1000)return `${trimNum(amount/1000)} L`;
+  return `${trimNum(amount)} ${unit}`.trim();
+}
+function aggregateIngredients(project){
+  const map=new Map();
+  for(const use of (project?.recipes||[])){
+    const r=recipes.find(x=>x.id===use.recipeId);if(!r)continue;
+    const base=Number(r.baseServings)||1;
+    const factor=(Number(use.targetServings)||0)/base;
+    for(const ing of (r.ingredients||[])){
+      const norm=normalizeUnit(ing.unit,ing.amount);
+      if(norm.amount===null)continue;
+      const key=`${String(ing.name||"").trim().toLowerCase()}||${norm.unit}`;
+      if(!map.has(key))map.set(key,{name:ing.name,unit:norm.unit,amount:0,sources:[]});
+      const row=map.get(key),add=norm.amount*factor;
+      row.amount+=add;row.sources.push(`${r.name} ${trimNum(add)}${norm.unit}`);
+    }
+  }
+  return [...map.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ko"));
+}
+
+function renderAssistant(){
+  $("todoKpi").textContent=assistant.filter(x=>x.type==="todo"&&!x.done).length;
+  $("memoKpi").textContent=assistant.filter(x=>x.type==="memo"&&!x.done).length;
+  $("projKpi").textContent=assistant.filter(x=>x.type==="project"&&!x.done).length;
+  $("doneKpi").textContent=assistant.filter(x=>x.done).length;
+  $("assistantList").innerHTML=assistant.length?assistant.map(x=>`
+    <div class="item" style="${x.done?"opacity:.55":""}">
+      <div class="itemrow">
+        <div>
+          <div class="title">${esc(x.title)}</div>
+          <div class="details">${esc(x.details||"")}</div>
+          <div class="meta">
+            <span class="chip">${esc(x.type)}</span>
+            <span class="chip ${esc(x.priority||"medium")}">${esc(x.priority||"medium")}</span>
+            ${x.dueDate?`<span class="chip">${esc(x.dueDate)}</span>`:""}
+            ${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:""}
+          </div>
+        </div>
+        <div class="actions">
+          <button class="small ghost" onclick="toggleAssistant('${x.id}')">${x.done?"되돌리기":"완료"}</button>
+          <button class="small ghost danger" onclick="deleteAssistant('${x.id}')">삭제</button>
+        </div>
+      </div>
+    </div>`).join(""):'<div class="empty">저장된 항목이 없습니다.</div>';
+}
+
+function renderRecipes(){
+  $("recipeCount").textContent=`${recipes.length}개`;
+  $("recipeList").innerHTML=recipes.length?recipes.map(r=>`
+    <div class="recipe-card">
+      <div class="recipe-head">
+        <div>
+          <div class="recipe-title">${esc(r.name)}</div>
+          <div class="recipe-sub">
+            기준 ${esc(r.baseServings??"-")}인분
+            ${r.yieldAmount?` · 완성량 ${esc(r.yieldAmount)}${esc(r.yieldUnit||"")}`:""}
+            ${r.sourceFilename?` · ${esc(r.sourceFilename)}`:""}
+          </div>
+        </div>
+        <button class="small ghost danger" onclick="deleteRecipe('${r.id}')">삭제</button>
+      </div>
+      <div class="tablewrap" style="margin-top:8px"><table>
+        <thead><tr><th>재료</th><th>기준량</th><th>전처리</th></tr></thead>
+        <tbody>${(r.ingredients||[]).map(i=>`
+          <tr>
+            <td>${esc(i.name)}</td>
+            <td>${esc(i.amount??i.rawAmount??"")} ${esc(i.unit||"")}</td>
+            <td>${esc(i.prep||"")}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>
+    </div>`).join(""):'<div class="empty">등록된 레시피가 없습니다.</div>';
+}
+
+function renderCookingProjects(){
+  $("cookingProjectList").innerHTML=cooking.length?cooking.map(p=>`
+    <div class="project-card">
+      <div class="itemrow">
+        <div><div class="title">${esc(p.name)}</div><div class="details">${esc(p.note||"")}</div></div>
+        <button class="small ghost danger" onclick="deleteCookingProject('${p.id}')">삭제</button>
+      </div>
+    </div>`).join(""):'<div class="empty">요리 프로젝트가 없습니다.</div>';
+
+  const sel=$("activeCookingProject"),prev=sel.value;
+  sel.innerHTML=cooking.length?cooking.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join(""):'<option value="">프로젝트 없음</option>';
+  if(cooking.some(p=>p.id===prev))sel.value=prev;
+  updateProjectSaveSelect();
+  renderProjectEditor();
+}
+
+function renderProjectEditor(){
+  const pid=$("activeCookingProject").value;
+  const p=cooking.find(x=>x.id===pid);
+  if(!p){
+    $("projectEditor").innerHTML='<div class="empty">프로젝트를 먼저 만들어 주세요.</div>';
+    $("ingredientTotals").innerHTML='<div class="empty">계산할 프로젝트가 없습니다.</div>';
+    return;
+  }
+
+  const available=recipes.filter(r=>!(p.recipes||[]).some(x=>x.recipeId===r.id));
+  $("projectEditor").innerHTML=`
+    <div class="project-card">
+      <div class="title">${esc(p.name)}</div>
+      <div class="details">${esc(p.note||"")}</div>
+      <h3>레시피 구성</h3>
+      <div class="actions">
+        <select id="recipePicker-${p.id}" style="flex:1;min-width:180px">
+          <option value="">레시피 선택</option>
+          ${available.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("")}
+        </select>
+        <button class="primary" onclick="addRecipeToProject('${p.id}')">추가</button>
+      </div>
+      <div class="project-recipes">
+        ${(p.recipes||[]).length?(p.recipes||[]).map(u=>{
+          const r=recipes.find(x=>x.id===u.recipeId);if(!r)return "";
+          return `<div class="project-recipe">
+            <div><b>${esc(r.name)}</b><div class="recipe-sub">기준 ${esc(r.baseServings??"-")}인분</div></div>
+            <input type="number" min="0" step="1" value="${esc(u.targetServings)}" onchange="setTargetServings('${p.id}','${r.id}',this.value)" title="목표 인분">
+            <button class="small ghost danger" onclick="removeRecipeFromProject('${p.id}','${r.id}')">제거</button>
+          </div>`;
+        }).join(""):'<div class="empty">프로젝트에 레시피를 추가하세요.</div>'}
+      </div>
+    </div>`;
+
+  const totals=aggregateIngredients(p);
+  $("ingredientTotals").innerHTML=totals.length?`
+    <div class="tablewrap"><table>
+      <thead><tr><th>재료</th><th>총 필요량</th><th>계산 근거</th></tr></thead>
+      <tbody>${totals.map(t=>`
+        <tr><td><b>${esc(t.name)}</b></td><td>${esc(prettyAmount(t.amount,t.unit))}</td><td>${esc(t.sources.join(" + "))}</td></tr>`
+      ).join("")}</tbody>
+    </table></div>`:'<div class="empty">레시피를 추가하면 전체 재료가 자동 합산됩니다.</div>';
+}
+
+$("activeCookingProject").onchange=renderProjectEditor;
+function renderAll(){renderAssistant();renderRecipes();renderCookingProjects()}
+apiConfig();renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "version": "4.2.0",
+  "runNpmInstall": false,
+  "files": [
+    {
+      "path": "server.js",
+      "url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/server.js",
+      "sha256": "REPLACE_WITH_SHA256"
+    },
+    {
+      "path": "public/index.html",
+      "url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/public/index.html",
+      "sha256": "REPLACE_WITH_SHA256"
+    }
+  ]
+}

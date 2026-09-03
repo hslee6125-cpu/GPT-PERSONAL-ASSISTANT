@@ -1,0 +1,5 @@
+{
+  "enabled": false,
+  "manifestUrl": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/update-manifest.json",
+  "timeoutMs": 15000
+}
