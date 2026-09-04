@@ -1,5 +1,5 @@
 {
-  "version": "4.8.8",
+  "version": "5.0.0",
   "runNpmInstall": false,
   "files": [
     {
@@ -53,6 +53,10 @@
     {
       "path": "public/js/assistant-utils.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-utils.js"
+    },
+    {
+      "path": "public/js/assistant-projects.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-projects.js"
     },
     {
       "path": "public/js/core.js",
@@ -121,6 +125,10 @@
     {
       "path": "public/js/dashboard-utils.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard-utils.js"
+    },
+    {
+      "path": "public/js/dashboard-actions.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard-actions.js"
     },
     {
       "path": "public/js/dashboard.js",
