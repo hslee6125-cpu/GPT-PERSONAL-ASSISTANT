@@ -18,6 +18,20 @@
     return normalizeText(query).split(' ').filter(Boolean);
   }
 
+  function escapeRegExp(value){
+    return String(value??'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  }
+  function highlightTextParts(value,query){
+    const text=String(value??'');
+    const terms=String(query??'').trim().split(/\s+/).filter(Boolean);
+    if(!text||!terms.length)return text?[{text,match:false}]:[];
+    const pattern=new RegExp(`(${terms.map(escapeRegExp).join('|')})`,'giu');
+    return text.split(pattern).filter(part=>part!=='').map(part=>({
+      text:part,
+      match:terms.some(term=>normalizeText(part)===normalizeText(term))
+    }));
+  }
+
   function assistantRecord(item){
     if(!item||item.deletedAt)return null;
     const kind=item.scheduleOnly?'schedule':item.activityOnly?'activity':(item.type||'todo');
@@ -91,5 +105,5 @@
     return{total:matches.length,results:matches.slice(0,limit)};
   }
 
-  return{parseCommand,searchAll,normalizeText};
+  return{parseCommand,searchAll,normalizeText,highlightTextParts};
 });
