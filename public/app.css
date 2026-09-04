@@ -356,3 +356,14 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 .assistant-item-mode{appearance:none;border:0;border-radius:8px;background:transparent;color:var(--muted);padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer}
 .assistant-item-mode:hover{background:#fff;color:var(--text)}
 .assistant-item-mode.active{background:#fff;color:var(--accent);box-shadow:0 1px 5px rgba(27,39,94,.10)}
+
+/* Today todo quick actions */
+.today-todo-action-wrap{position:relative;display:inline-flex;align-items:center;flex:0 0 auto}
+.today-todo-action-button{width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);font-size:17px;font-weight:900;line-height:1;cursor:pointer}
+.today-todo-action-button:hover,.today-todo-action-button[aria-expanded="true"]{border-color:var(--line);background:#f5f7fb;color:inherit}
+.today-todo-action-menu{position:absolute;top:calc(100% + 6px);right:0;z-index:35;min-width:178px;padding:6px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 12px 28px rgba(33,40,65,.16);white-space:normal}
+.today-todo-action-menu>button{display:block;width:100%;padding:9px 10px;border:0;border-radius:8px;background:transparent;text-align:left;color:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.today-todo-action-menu>button:hover{background:#f5f7fb}.today-todo-action-menu>button.danger{color:var(--danger)}
+.today-todo-action-menu label{display:block;margin:2px 4px 6px;font-size:11px;font-weight:900}.today-todo-action-menu input,.today-todo-action-menu select{width:100%;min-height:34px;padding:6px 8px;font-size:12px}
+.today-todo-action-editor-buttons{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:7px}
+@media(max-width:650px){.today-todo-action-menu{right:-4px;min-width:170px}.today-todo-action-button{width:28px;height:28px}}
