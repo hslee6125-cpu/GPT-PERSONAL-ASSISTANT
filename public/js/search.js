@@ -14,6 +14,10 @@
     panel.innerHTML=`<div class="search-empty">${esc(message)}</div>`;panel.classList.add('show');lastResults=[];
   }
 
+  function highlightResultText(value,query){
+    return SearchUtils.highlightTextParts(value,query).map(part=>part.match?`<mark class="search-highlight">${esc(part.text)}</mark>`:esc(part.text)).join('');
+  }
+
   function resultMeta(result){
     const parts=[];
     if(result.projectTitle)parts.push(`프로젝트 · ${result.projectTitle}`);
@@ -29,7 +33,7 @@
     const countText=response.total>lastResults.length?`${lastResults.length}개 표시 / 전체 ${response.total}개`:`${response.total}개`;
     panel.innerHTML=`<div class="search-head"><b>검색 결과 · “${esc(query)}”</b><span>${esc(countText)}</span></div>${lastResults.map((result,index)=>{
       const meta=resultMeta(result);
-      return `<button type="button" class="search-result-row" data-search-index="${index}"><span class="search-type">${esc(kindLabels[result.kind]||result.kind)}</span><span class="search-result-main"><span class="search-result-title">${esc(result.title)}</span>${result.snippet?`<span class="search-result-snippet">${esc(result.snippet)}</span>`:''}${meta.length?`<span class="search-result-meta">${meta.map(x=>`<span>${esc(x)}</span>`).join('')}</span>`:''}</span></button>`;
+      return `<button type="button" class="search-result-row" data-search-index="${index}"><span class="search-type">${esc(kindLabels[result.kind]||result.kind)}</span><span class="search-result-main"><span class="search-result-title">${highlightResultText(result.title,query)}</span>${result.snippet?`<span class="search-result-snippet">${highlightResultText(result.snippet,query)}</span>`:''}${meta.length?`<span class="search-result-meta">${meta.map(x=>`<span>${esc(x)}</span>`).join('')}</span>`:''}</span></button>`;
     }).join('')}`;
     panel.classList.add('show');
   }
