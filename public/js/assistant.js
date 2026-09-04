@@ -41,7 +41,6 @@
   function remove(id){if(!confirm('이 항목을 삭제할까요?'))return;s.assistant=s.assistant.filter(x=>x.id!==id);if(s.editingAssistantId===id)s.editingAssistantId=null;GPA.persist();}
   function startEdit(id){
     s.editingAssistantId=id;
-    $('assistantItemsPanel')?.setAttribute('open','open');
     render();
     requestAnimationFrame(()=>$(`edit-title-${id}`)?.focus());
   }
@@ -76,10 +75,9 @@
     const tags=(Array.isArray(x.tags)?x.tags:[]).map(tag=>`<span class="chip tag-chip">#${esc(tag)}</span>`).join('');
     return `<div class="item" style="${x.done?'opacity:.55':''}"><div class="itemrow"><div class="assistant-content"><div class="title">${esc(x.title)}</div><div class="details">${esc(x.details||'')}</div><div class="meta"><span class="chip">${esc(typeLabels[x.type]||x.type)}</span><span class="chip ${esc(x.priority||'medium')}">${esc(priorityLabels[x.priority||'medium']||x.priority)}</span>${x.dueDate?`<span class="chip">${esc(x.dueDate)}</span>`:''}${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div></div><div class="actions"><button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost" data-assistant-action="toggle" data-id="${x.id}">${x.done?'되돌리기':'완료'}</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button></div></div></div>`;
   }
-  function setActiveFilter(filter, {openPanel=true}={}){
+  function setActiveFilter(filter){
     if(!['todo','memo','project','done'].includes(filter))return;
     activeFilter=filter;s.editingAssistantId=null;
-    if(openPanel) $('assistantItemsPanel')?.setAttribute('open','open');
     render();
   }
   function projectProgressTone(progress){
@@ -88,7 +86,7 @@
     return 'light';
   }
   function getProjects(){
-    return AssistantUtils.collectAssistantProjects(s.assistant);
+    return AssistantUtils.collectAssistantProjects(s.assistant).filter(project=>!project.done);
   }
   function ensureActiveProject(projects){
     if(!projects.length){activeProjectKey='';return null;}
@@ -114,9 +112,28 @@
     GPA.persist();
   }
   function maybeOpenFilteredItems(filter){
-    setActiveFilter(filter,{openPanel:true});
-    const panel=$('assistantItemsPanel');
-    panel?.scrollIntoView({behavior:'smooth',block:'start'});
+    setActiveFilter(filter);
+    document.querySelector('.assistant-overview-card')?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function editProjectQuick(id){
+    const item=s.assistant.find(x=>x.id===id&&x.type==='project');
+    if(!item)return;
+    const oldTitle=item.title;
+    const title=prompt('프로젝트 이름',item.title||'');
+    if(title===null||!title.trim())return;
+    const details=prompt('프로젝트 설명',item.details||'');
+    if(details===null)return;
+    const dueDate=prompt('마감일 (YYYY-MM-DD, 없으면 비워두기)',item.dueDate||'');
+    if(dueDate===null)return;
+    try{
+      const nextTitle=title.trim();
+      s.assistant=AssistantUtils.updateAssistantItem(s.assistant,id,{title:nextTitle,details:details.trim(),dueDate:dueDate.trim()||null});
+      if(nextTitle!==oldTitle){
+        s.assistant=s.assistant.map(entry=>entry.projectTitle===oldTitle?{...entry,projectTitle:nextTitle}:entry);
+      }
+      activeProjectKey=nextTitle;
+      GPA.persist();
+    }catch(e){alert(e.message);}
   }
   function renderProjectCard(project,selected){
     return `<button type="button" class="project-hub-card ${selected?'active':''}" data-project-key="${esc(project.key)}">
@@ -129,7 +146,7 @@
     const unlinked=s.assistant.filter(item=>item&&!item.done&&item.type!=='project'&&!String(item.projectTitle||'').trim()).length;
     return `<div class="assistant-project-list-wrap">
       <div class="assistant-section-head"><div><h2>프로젝트 허브</h2><div class="notice" style="margin:2px 0 0">장기 프로젝트를 중심으로 관련 할 일과 메모를 한눈에 봅니다.</div></div><button type="button" id="createAssistantProject" class="ghost small">+ 새 프로젝트</button></div>
-      ${unlinked?`<div class="assistant-unlinked-note">연결되지 않은 항목 ${unlinked}개가 있습니다. 필요하면 전체 항목 보기에서 프로젝트를 연결해 주세요.</div>`:''}
+      ${unlinked?`<div class="assistant-unlinked-note">연결되지 않은 항목 ${unlinked}개가 있습니다. 필요하면 할 일 또는 메모 탭에서 프로젝트를 연결해 주세요.</div>`:''}
       <div class="project-hub-list">${projects.map(project=>renderProjectCard(project,active&&project.key===active.key)).join('')}</div>
     </div>`;
   }
@@ -169,9 +186,9 @@
           <div class="assistant-project-title-row"><h2>${esc(project.title)}</h2><span class="badge ${project.done?'':'ok'}">${project.done?'완료':'진행 중'}</span></div>
           <div class="assistant-project-progress-row"><div class="project-progress large"><span class="${projectProgressTone(project.progress)}" style="width:${project.progress}%"></span></div><b>${project.progress}%</b></div>
           <div class="project-summary-chips">${project.nextDue?`<span class="chip">다음 마감 ${esc(project.nextDue)}</span>`:''}<span class="chip">미완료 할 일 ${project.stats.todos}</span><span class="chip">메모 ${project.stats.memos}</span><span class="chip">일정 ${project.stats.schedules}</span></div>
-          <div class="details assistant-project-desc">${esc(project.description|| (project.isVirtual?'아직 프로젝트 설명이 없습니다. 전체 항목 보기에서 연결된 항목들을 수정하거나, 장기 프로젝트 설명 항목을 만들 수 있습니다.':'프로젝트 설명이 아직 없습니다.'))}</div>
+          <div class="details assistant-project-desc">${esc(project.description|| (project.isVirtual?'아직 프로젝트 설명이 없습니다. 연결된 항목을 수정하거나 장기 프로젝트 항목을 만들어 설명을 추가할 수 있습니다.':'프로젝트 설명이 아직 없습니다.'))}</div>
         </div>
-        <div class="assistant-project-hero-actions">${project.isVirtual?`<button type="button" class="ghost small" data-materialize-project="${esc(project.key)}">장기 프로젝트 항목 만들기</button>`:`<button type="button" class="ghost small" data-open-filter="project">프로젝트 전체 보기</button>`}<button type="button" class="ghost small" data-open-filter="todo">할 일 보기</button><button type="button" class="ghost small" data-open-filter="memo">메모 보기</button></div>
+        <div class="assistant-project-hero-actions">${project.isVirtual?`<button type="button" class="ghost small" data-materialize-project="${esc(project.key)}">장기 프로젝트 항목 만들기</button>`:`<button type="button" class="ghost small" data-edit-project="${project.projectItem.id}">프로젝트 수정</button><button type="button" class="ghost small" data-toggle-project="${project.projectItem.id}">프로젝트 완료</button>`}<button type="button" class="ghost small" data-open-filter="todo">할 일 보기</button><button type="button" class="ghost small" data-open-filter="memo">메모 보기</button></div>
       </div>
       <div class="assistant-project-grid">
         <div class="card pad project-info-card"><div class="assistant-section-head compact"><h3>관련 할 일</h3><button type="button" class="text-button" data-open-filter="todo">전체 보기</button></div>${renderTodoRows(project)}</div>
@@ -182,25 +199,35 @@
       </div>
     </div>`;
   }
-  function renderProjectHub(){
-    const projects=getProjects();
+  function renderProjectHub(projects=getProjects()){
     const active=ensureActiveProject(projects);
+    if(!projects.length){
+      $('assistantProjectHub').innerHTML=`<div class="project-hub-empty"><div><b>아직 장기 프로젝트가 없습니다.</b><span>새 프로젝트를 만들거나 통합 Inbox에서 장기 프로젝트를 추가해 보세요.</span></div><button type="button" id="createAssistantProject" class="primary small">+ 새 프로젝트</button></div>`;
+      return;
+    }
     $('assistantProjectHub').innerHTML=`<div class="assistant-project-hub-layout"><aside class="assistant-project-list">${renderProjectList(projects,active)}</aside><main class="assistant-project-main">${renderProjectDetail(active)}</main></div>`;
   }
   function render(){
+    const projects=getProjects();
     $('todoKpi').textContent=s.assistant.filter(x=>x.type==='todo'&&!x.done).length;
     $('memoKpi').textContent=s.assistant.filter(x=>x.type==='memo'&&!x.done).length;
-    $('projKpi').textContent=s.assistant.filter(x=>x.type==='project'&&!x.done).length;
+    $('projKpi').textContent=projects.length;
     $('doneKpi').textContent=s.assistant.filter(x=>x.done).length;
     document.querySelectorAll('[data-assistant-filter]').forEach(tab=>{const selected=tab.dataset.assistantFilter===activeFilter;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});
+    const projectMode=activeFilter === 'project';
+    $('assistantListPanel')?.classList.toggle('active',!projectMode);
+    $('assistantProjectHub')?.classList.toggle('active',projectMode);
+    if(projectMode){
+      renderProjectHub(projects);
+      return;
+    }
     const visible=AssistantUtils.filterAssistantItems(s.assistant,activeFilter);
     $('assistantList').innerHTML=visible.length?visible.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join(''):`<div class="empty">${esc(filterLabels[activeFilter])} 항목이 없습니다.</div>`;
-    renderProjectHub();
   }
   function bind(){
     $('analyzeInbox').addEventListener('click',analyzeInbox);
     $('inboxText').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyzeInbox();}});
-    document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter,{openPanel:true});});
+    document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter);});
     $('assistantList').addEventListener('click',e=>{const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':startEdit(id);break;case'toggle':toggle(id);break;case'delete':remove(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;}});
     $('assistantProjectHub').addEventListener('click',e=>{
       const project=e.target.closest('[data-project-key]');
@@ -209,6 +236,10 @@
       if(toggleButton){toggle(toggleButton.dataset.projectTodoToggle);return;}
       const materialize=e.target.closest('[data-materialize-project]');
       if(materialize){materializeProject(materialize.dataset.materializeProject);return;}
+      const editProject=e.target.closest('[data-edit-project]');
+      if(editProject){editProjectQuick(editProject.dataset.editProject);return;}
+      const toggleProject=e.target.closest('[data-toggle-project]');
+      if(toggleProject){toggle(toggleProject.dataset.toggleProject);return;}
       const openFilter=e.target.closest('[data-open-filter]');
       if(openFilter){maybeOpenFilteredItems(openFilter.dataset.openFilter);return;}
       if(e.target.id==='createAssistantProject'){createProject();}
