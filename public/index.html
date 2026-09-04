@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.5.0</title>
+<title>GPT Personal Assistant v4.6.0</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -12,25 +12,30 @@
   <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 원본 보관 + 요리 프로젝트 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.5.0</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.6.0</div>
 <div id="storageBadge" class="update-connected storage-status">OneDrive 저장 상태 확인 중...</div>
-
+<div class="card pad unified-inbox">
+  <div class="unified-inbox-head">
+    <div>
+      <h2>통합 Inbox</h2>
+      <div class="notice" style="margin:0">할 일, 메모, 장기 프로젝트를 자연어로 한 번에 입력하세요. 여러 내용을 함께 적어도 GPT가 나눠서 저장합니다.</div>
+    </div>
+    <span class="badge">Ctrl/Cmd + Enter</span>
+  </div>
+  <div class="inbox-compose">
+    <textarea id="inboxText" placeholder="예) 다음 주 월요일 보험사에 전화하고, 일본 취업 준비는 장기 프로젝트로 관리해. 워홀 신청은 10월 예정이라고 메모해줘."></textarea>
+    <button id="analyzeInbox" class="primary">GPT로 정리해서 저장</button>
+  </div>
+  <div id="inboxResult" class="inbox-result" aria-live="polite"></div>
+  <div id="inboxError" class="error" aria-live="assertive"></div>
+</div>
 <div class="tabs">
   <button class="tab active" data-view="assistant">개인 비서</button>
   <button class="tab" data-view="recipes">레시피</button>
   <button class="tab" data-view="cooking">요리 프로젝트</button>
 </div>
-
 <section id="assistant" class="view active">
-  <div class="grid2">
-    <div class="card pad">
-      <h2>비서에게 말하기</h2>
-      <textarea id="inboxText" placeholder="예) 10월 워홀 신청 준비. 잔고증명서와 여권 사본 준비. 일본 취업은 장기 프로젝트로 관리."></textarea>
-      <button id="analyzeInbox" class="primary full">GPT로 정리해서 저장</button>
-      <div id="inboxError" class="error"></div>
-      <div class="notice">GPT는 문장 해석과 분류에 사용합니다. 데이터는 OneDrive에 자동 저장되며 브라우저에는 비상용 사본도 유지됩니다.</div>
-    </div>
-    <div class="card pad">
+  <div class="card pad">
       <div class="kpis">
         <div class="kpi"><b id="todoKpi">0</b><span>할 일</span></div>
         <div class="kpi"><b id="memoKpi">0</b><span>메모</span></div>
@@ -38,10 +43,8 @@
         <div class="kpi"><b id="doneKpi">0</b><span>완료</span></div>
       </div>
       <div id="assistantList" class="list"></div>
-    </div>
   </div>
 </section>
-
 <section id="recipes" class="view">
   <div class="grid2">
     <div class="card pad">
@@ -59,14 +62,12 @@
 기준 10인분
 민어살 500g
 생크림 200g
-
 동치미 젤리
 기준 10인분
 동치미 국물 250ml
 젤라틴 5g"></textarea>
         <button id="parseRecipeText" class="primary full">GPT로 레시피 분석</button>
       </div>
-
       <div id="wordRecipe" class="recipe-source">
         <input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
         <div id="dropzone" class="dropzone">
@@ -77,7 +78,6 @@
         <button id="parseDocx" class="primary full">Word에서 레시피 찾기</button>
         <div class="notice">업로드한 원본 Word 파일은 OneDrive에 자동 보관됩니다. 레시피를 삭제해도 원본 파일은 유지됩니다.<br>사진/스캔 이미지만 들어있는 Word 파일은 현재 버전에서 인식하지 않습니다.</div>
       </div>
-
       <div id="recipeError" class="error"></div>
 
       <div id="recipePreview" class="preview-area">
@@ -87,7 +87,6 @@
         </div>
         <div id="documentSummary" class="preview-summary"></div>
         <div id="recipePreviewList" class="list"></div>
-
         <div class="savebar">
           <div>
             <label>저장 후 요리 프로젝트에 연결</label>
@@ -98,7 +97,6 @@
         </div>
       </div>
     </div>
-
     <div class="card pad">
       <div class="itemrow">
         <h2>레시피 데이터베이스</h2>
@@ -117,7 +115,6 @@
     </div>
   </div>
 </section>
-
 <section id="cooking" class="view">
   <div class="grid2">
     <div>
@@ -134,7 +131,6 @@
         <div id="cookingProjectList" class="list"></div>
       </div>
     </div>
-
     <div class="card pad">
       <div class="totalbar">
         <div>
@@ -153,7 +149,6 @@
   </div>
 </section>
 </div>
-
 <script src="/recipe-utils.js"></script>
 <script src="/js/assistant-utils.js"></script>
 <script src="/js/core.js"></script>
