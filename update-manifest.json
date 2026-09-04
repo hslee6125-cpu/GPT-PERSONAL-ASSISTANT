@@ -1,5 +1,5 @@
 {
-  "version": "4.7.3",
+  "version": "4.8.0",
   "runNpmInstall": false,
   "files": [
     {
@@ -109,6 +109,14 @@
     {
       "path": "restart-helper.vbs",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/restart-helper.vbs"
+    },
+    {
+      "path": "public/js/dashboard-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard-utils.js"
+    },
+    {
+      "path": "public/js/dashboard.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard.js"
     }
   ]
 }
