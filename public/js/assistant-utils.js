@@ -68,11 +68,11 @@
     const dueToday = normalizeDueDate(today);
     if (!text || !dueToday) return null;
     const definitions = [
-      {command:'오늘일정',kind:'schedule',offset:0},
-      {command:'내일일정',kind:'schedule',offset:1},
-      {command:'오늘할일',kind:'todo',offset:0},
-      {command:'내일할일',kind:'todo',offset:1},
-      {command:'메모',kind:'memo',offset:null}
+      {command:'/오늘일정',kind:'schedule',offset:0},
+      {command:'/내일일정',kind:'schedule',offset:1},
+      {command:'/오늘할일',kind:'todo',offset:0},
+      {command:'/내일할일',kind:'todo',offset:1},
+      {command:'/메모',kind:'memo',offset:null}
     ];
     const def = definitions.find(entry=>text===entry.command||text.startsWith(`${entry.command} `));
     if (!def) return null;
@@ -97,7 +97,7 @@
   }
   function parseTodayScheduleCommand(value, today) {
     const parsed = parseLocalInboxCommand(value,today);
-    return parsed?.command==='오늘일정' ? parsed.item : null;
+    return parsed?.command==='/오늘일정' ? parsed.item : null;
   }
 
   function normalizeInboxItem(item) {
