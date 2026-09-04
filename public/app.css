@@ -243,3 +243,46 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 .trash-item{background:#fffafa}
 @media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:650px){.kpis{grid-template-columns:repeat(2,1fr)}.project-inline-grid{grid-template-columns:1fr}.project-inline-grid .edit-span{grid-column:auto}.project-row-actions{width:100%;justify-content:flex-end}.project-mini-row,.project-recent-row{flex-wrap:wrap}.trash-toolbar{align-items:stretch;flex-direction:column}.trash-toolbar button{width:100%}}
+
+/* v4.7.3 memo clipboard board */
+.memo-board{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:14px;
+  align-items:stretch;
+}
+.memo-board-card{
+  min-height:220px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#fff;
+  box-shadow:0 2px 8px rgba(35,40,65,.025);
+  transition:border-color .15s,box-shadow .15s,transform .15s;
+}
+.memo-board-card:hover{border-color:#d3d7e3;box-shadow:0 10px 24px rgba(35,40,65,.07);transform:translateY(-1px)}
+.memo-board-main{min-width:0}
+.memo-board-title{font-size:16px;font-weight:900;line-height:1.35;overflow-wrap:anywhere}
+.memo-board-body{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:6;
+  overflow:hidden;
+  margin-top:12px;
+  min-height:7.8em;
+  color:#4f5662;
+  font-size:13px;
+  line-height:1.55;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.memo-board-body.empty-body{color:#a0a5af}
+.memo-board-footer{margin-top:18px;padding-top:12px;border-top:1px solid #eef0f4}
+.memo-board-meta{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
+.memo-board-meta .chip{background:#fff;border:1px solid var(--line);color:#646b76}
+.memo-board-actions{justify-content:flex-end;margin-top:10px}
+.memo-board .assistant-edit-card{min-height:220px;background:#fff}
+@media(max-width:720px){.memo-board{grid-template-columns:1fr}.memo-board-card{min-height:200px}}
