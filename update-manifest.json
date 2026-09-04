@@ -1,26 +1,14 @@
 {
-  "version": "5.1.3",
+  "version": "5.1.4",
   "runNpmInstall": false,
   "files": [
-    {
-      "path": "public/app.css",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"
-    },
     {
       "path": "public/index.html",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
     },
     {
-      "path": "public/js/main.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/main.js"
-    },
-    {
-      "path": "public/js/settings-info.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/settings-info.js"
-    },
-    {
-      "path": "public/js/storage.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/storage.js"
+      "path": "updater.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/updater.js"
     }
   ]
 }
