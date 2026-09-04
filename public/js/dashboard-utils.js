@@ -49,13 +49,6 @@
     }
     throw new Error('지원하지 않는 빠른 추가 항목입니다.');
   }
-  function applyItemTime(item,value){
-    if(!item||typeof item!=='object') throw new Error('시간을 저장할 항목이 없습니다.');
-    const raw=String(value||'').trim();
-    if(raw&&!validTime(raw)) throw new Error('시간 형식이 올바르지 않습니다.');
-    item.dueTime=raw||null;
-    return item.dueTime;
-  }
   function buildTodayDashboard({assistant=[],cooking=[],today}){
     const todayDay=dayNumber(today);
     if(todayDay===null) throw new Error('오늘 날짜 형식이 올바르지 않습니다.');
@@ -90,5 +83,5 @@
       kpis:{todayTodos:todayTodos.length,todaySchedules:todaySchedules.length,overdueTodos:overdueTodos.length,activeProjects:projects.length}
     };
   }
-  return {buildTodayDashboard,createQuickItem,applyItemTime};
+  return {buildTodayDashboard,createQuickItem};
 });
