@@ -1,6 +1,6 @@
 (function(root){
   const GPA=root.GPA,$=GPA.$;
-  async function apiConfig(){try{const r=await fetch('/api/config'),d=await r.json();$('apiBadge').textContent=d.configured?`GPT 연결됨 · ${d.model} · v${d.version||'?'}`:`API 키 필요 · v${d.version||'?'}`;$('apiBadge').className=`badge ${d.configured?'ok':'bad'}`;}catch{$('apiBadge').textContent='서버 연결 실패';$('apiBadge').className='badge bad';}}
+  async function apiConfig(){try{const r=await fetch('/api/config'),d=await r.json();const version=d.version||'?';$('appTitle').textContent=`GPT Personal Assistant v${version}`;document.title=`GPT Personal Assistant v${version}`;$('apiBadge').textContent=d.configured?`GPT 연결됨 · ${d.model} · v${version}`:`API 키 필요 · v${version}`;$('apiBadge').className=`badge ${d.configured?'ok':'bad'}`;}catch{$('apiBadge').textContent='서버 연결 실패';$('apiBadge').className='badge bad';}}
   GPA.showView=(view)=>{
     const target=document.querySelector(`.tab[data-view="${view}"]`);const section=$(view);if(!target||!section)return false;
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));target.classList.add('active');section.classList.add('active');return true;
