@@ -34,11 +34,11 @@
   }
   function scheduleRows(items){
     if(!items.length)return empty('오늘 일정이 없습니다.');
-    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" ${item.projectTitle?`data-dashboard-project="${esc(item.projectTitle)}"`:'data-dashboard-assistant="todo"'}><span class="today-row-main"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}${item.details?`<span>${esc(item.details)}</span>`:''}</span><span class="today-row-meta"><span class="today-meta-time">${timeLabel(item)}</span><span class="today-meta-date today-date-badge">오늘</span></span></button>`).join('')}</div>`;
+    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" data-dashboard-assistant-item="${item.id}"><span class="today-row-main"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}${item.details?`<span>${esc(item.details)}</span>`:''}</span><span class="today-row-meta"><span class="today-meta-time">${timeLabel(item)}</span><span class="today-meta-date today-date-badge">오늘</span></span></button>`).join('')}</div>`;
   }
   function upcomingRows(items){
     if(!items.length)return empty('7일 안에 예정된 마감이 없습니다.');
-    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" ${item.projectTitle?`data-dashboard-project="${esc(item.projectTitle)}"`:`data-dashboard-assistant="${item.scheduleOnly?'project':'todo'}"`}><span class="today-row-main"><b>${esc(item.title)}</b><span>${item.scheduleOnly?'일정':'할 일'}${item.projectTitle?` · ${esc(item.projectTitle)}`:''}</span></span><span class="today-row-meta"><span class="today-meta-time">${timeLabel(item)}</span><span class="today-meta-date today-date-badge">${esc(item.dueDate.slice(5))}</span></span></button>`).join('')}</div>`;
+    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" ${item.scheduleOnly?`data-dashboard-assistant-item="${item.id}"`:item.projectTitle?`data-dashboard-project="${esc(item.projectTitle)}"`:'data-dashboard-assistant="todo"'}><span class="today-row-main"><b>${esc(item.title)}</b><span>${item.scheduleOnly?'일정':'할 일'}${item.projectTitle?` · ${esc(item.projectTitle)}`:''}</span></span><span class="today-row-meta"><span class="today-meta-time">${timeLabel(item)}</span><span class="today-meta-date today-date-badge">${esc(item.dueDate.slice(5))}</span></span></button>`).join('')}</div>`;
   }
   function projectRows(projects){
     if(!projects.length)return empty('진행 중인 프로젝트가 없습니다.');
@@ -82,6 +82,7 @@
       if(e.target.closest('[data-dashboard-quick-save]')){saveQuick();return;}
       const collapse=e.target.closest('[data-dashboard-collapse]');if(collapse){const key=collapse.dataset.dashboardCollapse;const section=collapse.closest('[data-dashboard-section]');const autoEmpty=section?.dataset.dashboardAutoEmpty==='true';setCollapsed(key,!isSectionCollapsed(key,autoEmpty));render();return;}
       const toggle=e.target.closest('[data-dashboard-toggle]');if(toggle){const item=s.assistant.find(x=>x.id===toggle.dataset.dashboardToggle&&!x.deletedAt);if(item){item.done=!item.done;GPA.persist('dashboard-toggle');}return;}
+      const assistantItem=e.target.closest('[data-dashboard-assistant-item]');if(assistantItem){GPA.showView('assistant');GPA.assistant.openItem(assistantItem.dataset.dashboardAssistantItem);return;}
       const project=e.target.closest('[data-dashboard-project]');if(project){GPA.showView('assistant');GPA.assistant.openProject(project.dataset.dashboardProject);return;}
       const assistant=e.target.closest('[data-dashboard-assistant]');if(assistant){GPA.showView('assistant');GPA.assistant.openFilter(assistant.dataset.dashboardAssistant);return;}
       const cooking=e.target.closest('[data-dashboard-cooking]');if(cooking){GPA.showView('cooking');GPA.cooking.openProject(cooking.dataset.dashboardCooking);return;}
