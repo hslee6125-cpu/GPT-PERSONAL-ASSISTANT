@@ -226,3 +226,20 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 .project-hub-empty b{display:block;font-size:13px;color:var(--text)}
 .project-hub-empty span{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:var(--muted)}
 @media(max-width:650px){.project-hub-empty{align-items:stretch;flex-direction:column}.project-hub-empty button{width:100%}}
+
+/* v4.7.2 direct project management + trash */
+.kpis{grid-template-columns:repeat(5,1fr)}
+.project-inline-editor{margin-bottom:10px;padding:11px;border:1px solid #ccd5ff;border-radius:12px;background:#fbfbff}
+.project-inline-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+.project-inline-grid .edit-span{grid-column:1/-1}
+.project-inline-grid label{margin:0 0 5px}
+.project-inline-grid textarea{min-height:74px}
+.project-inline-actions{justify-content:flex-end;margin-top:9px}
+.project-row-actions{display:flex;gap:7px;align-items:center;flex:0 0 auto}
+.project-row-actions .text-button{white-space:nowrap}
+.project-auto-label{font-size:9px;color:var(--muted);padding:4px 6px;border-radius:999px;background:#f2f4f8;white-space:nowrap}
+.trash-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:10px 12px;border-radius:12px;background:#f7f8fb;border:1px solid var(--line)}
+.trash-toolbar>div{display:flex;align-items:center;gap:8px}.trash-toolbar b{font-size:13px}.trash-toolbar span{font-size:11px;color:var(--muted)}
+.trash-item{background:#fffafa}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:650px){.kpis{grid-template-columns:repeat(2,1fr)}.project-inline-grid{grid-template-columns:1fr}.project-inline-grid .edit-span{grid-column:auto}.project-row-actions{width:100%;justify-content:flex-end}.project-mini-row,.project-recent-row{flex-wrap:wrap}.trash-toolbar{align-items:stretch;flex-direction:column}.trash-toolbar button{width:100%}}
