@@ -134,13 +134,32 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 @media(max-width:1040px){.recipe-library-layout{grid-template-columns:1fr}.recipe-library-tools{display:grid;grid-template-columns:1fr 1fr;gap:14px}.recipe-library-tools>.card{margin-top:0!important}.cooking-layout{grid-template-columns:1fr}.cooking-sidebar{display:grid;grid-template-columns:1fr 1fr;gap:14px}.cooking-sidebar>.card{margin-top:0!important}.cooking-sidebar>.card:first-child{grid-column:1/-1}}
 @media(max-width:760px){.cooking-mode-tabs{display:flex}.cooking-mode{flex:1}.recipe-library-tools{display:block}.recipe-library-tools>.card{margin-top:14px!important}.recipe-library-tools>.card:first-child{margin-top:0!important}.recipe-library-head{flex-direction:column}.recipe-search{width:100%;min-width:0}.recipe-library-item-head{flex-direction:column}.recipe-library-actions{justify-content:flex-start}.recipe-project-row{grid-template-columns:1fr}.cooking-sidebar{display:block}.cooking-sidebar>.card{margin-top:14px!important}.cooking-sidebar>.card:first-child{margin-top:0!important}.mini-grid{grid-template-columns:1fr}.course-recipe-top{grid-template-columns:auto 1fr}.target-serving-field,.course-actions{grid-column:2}.course-actions{justify-content:flex-start}.project-editor-heading{align-items:flex-start;flex-direction:column}.recipe-savebar{align-items:stretch}.save-project-field{min-width:0}}
 
-/* v4.6.3 system launch settings */
-.system-settings-card{margin-top:14px}
-.system-setting-list{display:grid;gap:8px;margin-top:12px}
-.system-setting-row{display:flex;align-items:flex-start;gap:11px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
-.system-setting-row input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
-.system-setting-row span{display:grid;gap:3px}
-.system-setting-row b{font-size:13px}
-.system-setting-row small{font-size:12px;color:var(--muted);line-height:1.45}
-.system-settings-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}
+/* v4.6.6 assistant filters */
+.assistant-filter-tabs{margin-bottom:12px}
+.assistant-filter-tab{appearance:none;text-align:left;background:#fff;color:var(--text);transition:border-color .15s,background .15s,box-shadow .15s,transform .15s}
+.assistant-filter-tab:hover{border-color:#cfd5f5;background:#fafbff}
+.assistant-filter-tab.active{border-color:#aeb8ff;background:var(--accent2);box-shadow:0 4px 14px rgba(82,101,232,.10)}
+.assistant-filter-tab.active b{color:var(--accent)}
+.assistant-filter-tab:active{transform:translateY(1px)}
+
+/* v4.6.6 compact launch settings */
+.system-settings-card{margin-top:12px;overflow:hidden}
+.system-settings-summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;cursor:pointer;font-size:12px;font-weight:850;color:#555d69;user-select:none}
+.system-settings-summary::-webkit-details-marker{display:none}
+.system-settings-summary small{font-size:10px;font-weight:700;color:var(--muted)}
+.system-settings-summary::after{content:'▾';font-size:11px;color:var(--muted);margin-left:auto}
+.system-settings-card[open] .system-settings-summary::after{content:'▴'}
+.system-settings-card[open] .system-settings-summary{border-bottom:1px solid var(--line)}
+.system-settings-body{padding:10px 13px 12px}
+.system-settings-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.system-settings-head .notice{margin:0}
+.system-setting-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px}
+.system-setting-row{display:flex;align-items:flex-start;gap:8px;padding:9px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;margin:0}
+.system-setting-row input{width:16px;height:16px;margin-top:1px;flex:0 0 auto}
+.system-setting-row span{display:grid;gap:2px}
+.system-setting-row b{font-size:11px}
+.system-setting-row small{font-size:10px;color:var(--muted);line-height:1.35}
+.system-settings-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:9px}
+.system-settings-actions .notice{margin:0;font-size:11px}
+@media(max-width:760px){.system-setting-list{grid-template-columns:1fr}.system-settings-head{align-items:flex-start;flex-direction:column}}
 @media(max-width:650px){.system-settings-actions{align-items:stretch;flex-direction:column}.system-settings-actions button{width:100%}}
