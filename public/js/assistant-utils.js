@@ -45,11 +45,18 @@
     if (counts.project) labels.push(`프로젝트 ${counts.project}`);
     return { total:source.length, counts, text:labels.join(' · ') };
   }
+  function isSpecialRecord(item) {
+    return Boolean(item?.activityOnly || item?.scheduleOnly);
+  }
   function filterAssistantItems(items, filter='todo') {
     const source = Array.isArray(items) ? items : [];
-    if (filter === 'done') return source.filter(item => Boolean(item?.done));
-    const safeFilter = TYPES.has(filter) ? filter : 'todo';
-    return source.filter(item => item?.type === safeFilter && !item?.done);
+    if (filter === 'trash') return source.filter(item => Boolean(item?.deletedAt));
+    const active = source.filter(item => !item?.deletedAt);
+    if (filter === 'done') return active.filter(item => Boolean(item?.done) && !isSpecialRecord(item));
+    if (filter === 'memo') return active.filter(item => item?.type === 'memo' && !item?.done && !item?.activityOnly);
+    if (filter === 'todo') return active.filter(item => item?.type === 'todo' && !item?.done && !item?.scheduleOnly);
+    if (filter === 'project') return active.filter(item => item?.type === 'project' && !item?.done);
+    return active.filter(item => item?.type === 'todo' && !item?.done && !item?.scheduleOnly);
   }
 
   function updateAssistantItem(items, id, patch) {
@@ -67,6 +74,80 @@
     if ('dueDate' in nextPatch) nextPatch.dueDate = normalizeOptional(nextPatch.dueDate);
     if ('projectTitle' in nextPatch) nextPatch.projectTitle = normalizeOptional(nextPatch.projectTitle);
     return source.map(item => item?.id === id ? { ...item, ...nextPatch } : item);
+  }
+
+  function softDeleteAssistantItem(items, id, deletedAt=new Date().toISOString()) {
+    const source = Array.isArray(items) ? items : [];
+    return source.map(item => item?.id === id && !item?.deletedAt ? {
+      ...item,
+      deletedAt: String(deletedAt || new Date().toISOString()),
+      deletedFromDone: Boolean(item.done)
+    } : item);
+  }
+  function restoreAssistantItem(items, id) {
+    const source = Array.isArray(items) ? items : [];
+    return source.map(item => {
+      if (item?.id !== id || !item?.deletedAt) return item;
+      const restored = { ...item, done: 'deletedFromDone' in item ? Boolean(item.deletedFromDone) : Boolean(item.done) };
+      delete restored.deletedAt;
+      delete restored.deletedFromDone;
+      return restored;
+    });
+  }
+  function permanentlyDeleteAssistantItem(items, id) {
+    const source = Array.isArray(items) ? items : [];
+    return source.filter(item => !(item?.id === id && item?.deletedAt));
+  }
+  function emptyAssistantTrash(items) {
+    const source = Array.isArray(items) ? items : [];
+    return source.filter(item => !item?.deletedAt);
+  }
+
+  function validateTitle(value) {
+    const title = String(value ?? '').trim();
+    if (!title) throw new Error('제목을 입력해 주세요.');
+    return title;
+  }
+  function createProjectRecord(kind, projectTitle, values={}, meta={}) {
+    const project = String(projectTitle ?? '').trim();
+    if (!project) throw new Error('연결할 프로젝트를 찾지 못했습니다.');
+    const title = validateTitle(values.title);
+    const common = {
+      id: meta.id || `${Date.now()}-${Math.random()}`,
+      title,
+      details: String(values.details ?? '').trim(),
+      priority: PRIORITIES.has(values.priority) ? values.priority : 'medium',
+      dueDate: normalizeDueDate(values.dueDate),
+      tags: normalizeTags(values.tags),
+      projectTitle: project,
+      done: Boolean(values.done),
+      createdAt: meta.createdAt || new Date().toISOString()
+    };
+    if (kind === 'todo') return { ...common, type:'todo' };
+    if (kind === 'memo') return { ...common, type:'memo', dueDate:null };
+    if (kind === 'schedule') {
+      if (!common.dueDate) throw new Error('일정 날짜를 입력해 주세요.');
+      return { ...common, type:'todo', scheduleOnly:true };
+    }
+    if (kind === 'activity') return { ...common, type:'memo', dueDate:null, activityOnly:true };
+    throw new Error('지원하지 않는 프로젝트 항목입니다.');
+  }
+  function updateProjectRecord(items, id, patch={}) {
+    const source = Array.isArray(items) ? items : [];
+    const target = source.find(item => item?.id === id);
+    if (!target) throw new Error('수정할 프로젝트 항목을 찾지 못했습니다.');
+    const next = { ...patch };
+    if ('title' in next) next.title = validateTitle(next.title);
+    if ('details' in next) next.details = String(next.details ?? '').trim();
+    if ('priority' in next) next.priority = PRIORITIES.has(next.priority) ? next.priority : 'medium';
+    if ('dueDate' in next) {
+      next.dueDate = normalizeDueDate(next.dueDate);
+      if (target.scheduleOnly && !next.dueDate) throw new Error('일정 날짜를 입력해 주세요.');
+    }
+    delete next.projectTitle;
+    delete next.activityOnly;
+    delete next.scheduleOnly;
+    return source.map(item => item?.id === id ? { ...item, ...next } : item);
   }
 
   function parseDateMs(value) {
@@ -110,10 +191,9 @@
     return map.get(name);
   }
   function collectAssistantProjects(items) {
-    const source = Array.isArray(items) ? items : [];
+    const source = (Array.isArray(items) ? items : []).filter(item => item && !item.deletedAt);
     const map = new Map();
     for (const item of source) {
-      if (!item || typeof item !== 'object') continue;
       const title = String(item.title ?? '').trim();
       if (item.type === 'project' && title) {
         const entry = ensureProjectRecord(map, title);
@@ -128,13 +208,15 @@
     return [...map.values()].map(entry => {
       const projectItem = entry.projectItem;
       const linked = entry.linked.filter(Boolean);
-      const todos = sortTodos(linked.filter(item => item.type === 'todo'));
-      const memos = sortRecent(linked.filter(item => item.type === 'memo'));
-      const scheduleItems = sortSchedules([projectItem, ...linked].filter(item => item && item.dueDate && !item.done));
+      const todos = sortTodos(linked.filter(item => item.type === 'todo' && !item.scheduleOnly));
+      const memos = sortRecent(linked.filter(item => item.type === 'memo' && !item.activityOnly));
+      const activities = sortRecent(linked.filter(item => item.activityOnly));
+      const scheduleItems = sortSchedules(linked.filter(item => item.scheduleOnly && item.dueDate && !item.done));
+      const datedItems = sortSchedules([projectItem, ...linked].filter(item => item && item.dueDate && !item.done));
       const doneTodos = todos.filter(item => item.done).length;
       const totalTodos = todos.length;
       const progress = totalTodos ? Math.round((doneTodos / totalTodos) * 100) : (projectItem?.done ? 100 : 0);
-      const recent = sortRecent([projectItem, ...linked].filter(Boolean)).slice(0, 5);
+      const recent = sortRecent([projectItem, ...linked].filter(Boolean)).slice(0, 8);
       return {
         key: entry.key,
         title: projectItem?.title || entry.title,
@@ -145,21 +227,25 @@
         todos,
         memos,
         schedules: scheduleItems,
+        activities,
         recent,
-        nextDue: scheduleItems[0]?.dueDate || null,
+        nextDue: datedItems[0]?.dueDate || null,
         progress,
         doneTodos,
         totalTodos,
         stats: {
           todos: todos.filter(item => !item.done).length,
           memos: memos.length,
-          schedules: scheduleItems.length
+          schedules: scheduleItems.length,
+          activities: activities.length
         }
       };
     }).sort((a,b)=>projectSortKey(a).localeCompare(projectSortKey(b), 'ko'));
   }
   function formatActivityLabel(item) {
     if (!item) return '';
+    if (item.activityOnly) return '활동 기록';
+    if (item.scheduleOnly) return item.done ? '일정 완료' : '일정 추가';
     if (item.type === 'project') return item.done ? '프로젝트 완료' : '프로젝트 생성';
     if (item.type === 'todo') return item.done ? '할 일 완료' : '할 일 추가';
     return '메모 추가';
@@ -179,6 +265,12 @@
     summarizeInboxItems,
     filterAssistantItems,
     updateAssistantItem,
+    softDeleteAssistantItem,
+    restoreAssistantItem,
+    permanentlyDeleteAssistantItem,
+    emptyAssistantTrash,
+    createProjectRecord,
+    updateProjectRecord,
     collectAssistantProjects,
     formatActivityLabel,
     buildProjectSuggestions
