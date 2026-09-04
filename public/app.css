@@ -133,3 +133,14 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 .course-actions button:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:1040px){.recipe-library-layout{grid-template-columns:1fr}.recipe-library-tools{display:grid;grid-template-columns:1fr 1fr;gap:14px}.recipe-library-tools>.card{margin-top:0!important}.cooking-layout{grid-template-columns:1fr}.cooking-sidebar{display:grid;grid-template-columns:1fr 1fr;gap:14px}.cooking-sidebar>.card{margin-top:0!important}.cooking-sidebar>.card:first-child{grid-column:1/-1}}
 @media(max-width:760px){.cooking-mode-tabs{display:flex}.cooking-mode{flex:1}.recipe-library-tools{display:block}.recipe-library-tools>.card{margin-top:14px!important}.recipe-library-tools>.card:first-child{margin-top:0!important}.recipe-library-head{flex-direction:column}.recipe-search{width:100%;min-width:0}.recipe-library-item-head{flex-direction:column}.recipe-library-actions{justify-content:flex-start}.recipe-project-row{grid-template-columns:1fr}.cooking-sidebar{display:block}.cooking-sidebar>.card{margin-top:14px!important}.cooking-sidebar>.card:first-child{margin-top:0!important}.mini-grid{grid-template-columns:1fr}.course-recipe-top{grid-template-columns:auto 1fr}.target-serving-field,.course-actions{grid-column:2}.course-actions{justify-content:flex-start}.project-editor-heading{align-items:flex-start;flex-direction:column}.recipe-savebar{align-items:stretch}.save-project-field{min-width:0}}
+
+/* v4.6.3 system launch settings */
+.system-settings-card{margin-top:14px}
+.system-setting-list{display:grid;gap:8px;margin-top:12px}
+.system-setting-row{display:flex;align-items:flex-start;gap:11px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
+.system-setting-row input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
+.system-setting-row span{display:grid;gap:3px}
+.system-setting-row b{font-size:13px}
+.system-setting-row small{font-size:12px;color:var(--muted);line-height:1.45}
+.system-settings-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}
+@media(max-width:650px){.system-settings-actions{align-items:stretch;flex-direction:column}.system-settings-actions button{width:100%}}
