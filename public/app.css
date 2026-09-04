@@ -48,7 +48,6 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
   .project-selector{flex-direction:column;align-items:stretch}.project-selector select{min-width:0}
   .savebar{flex-direction:column;align-items:stretch}
 }
-
 .update-connected{
   margin:-2px 0 14px;
   padding:10px 13px;
@@ -60,7 +59,6 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
   font-weight:850;
   text-align:center;
 }
-
 /* v4.5 assistant editor */
 .assistant-content{min-width:0;flex:1}
 .assistant-edit-card{border-color:#cfd5ff;background:#fbfbff}
@@ -73,3 +71,14 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 .storage-bad{background:#fff1f2!important;border-color:#f0c2c8!important;color:#9b3441!important}
 @media(max-width:600px){.edit-grid{grid-template-columns:1fr}.edit-grid .edit-span{grid-column:auto}.itemrow{flex-direction:column}.itemrow>.actions{width:100%}}
 
+/* v4.6 unified inbox */
+.unified-inbox{margin-bottom:14px}
+.unified-inbox-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.unified-inbox-head h2{margin-bottom:4px}
+.inbox-compose{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:9px;align-items:stretch}
+.inbox-compose textarea{min-height:96px}
+.inbox-compose button{height:100%;min-height:48px}
+.inbox-result{display:none;margin-top:9px;padding:9px 11px;border-radius:11px;background:#edf9f1;color:#1f6d43;font-size:12px;line-height:1.5;font-weight:750}
+.inbox-result.show{display:block}
+.meta .tag-chip{background:#f4f0ff;color:#6550a6}
+@media(max-width:700px){.unified-inbox-head{flex-direction:column}.inbox-compose{grid-template-columns:1fr}.inbox-compose button{height:auto}}
