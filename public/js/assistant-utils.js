@@ -17,6 +17,11 @@
     const date = new Date(Date.UTC(year, month - 1, day));
     return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? text : null;
   }
+  function normalizeDueTime(value) {
+    const text = String(value ?? '').trim();
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(text)) return null;
+    return text;
+  }
   function normalizeTags(value) {
     const tags = Array.isArray(value) ? value : [];
     return [...new Set(tags.map(tag => String(tag ?? '').trim()).filter(Boolean))];
@@ -71,7 +76,8 @@
     if ('details' in nextPatch) nextPatch.details = String(nextPatch.details ?? '').trim();
     if ('type' in nextPatch && !TYPES.has(nextPatch.type)) throw new Error('올바른 분류를 선택해 주세요.');
     if ('priority' in nextPatch && !PRIORITIES.has(nextPatch.priority)) throw new Error('올바른 중요도를 선택해 주세요.');
-    if ('dueDate' in nextPatch) nextPatch.dueDate = normalizeOptional(nextPatch.dueDate);
+    if ('dueDate' in nextPatch) nextPatch.dueDate = normalizeDueDate(nextPatch.dueDate);
+    if ('dueTime' in nextPatch) nextPatch.dueTime = normalizeDueTime(nextPatch.dueTime);
     if ('projectTitle' in nextPatch) nextPatch.projectTitle = normalizeOptional(nextPatch.projectTitle);
     return source.map(item => item?.id === id ? { ...item, ...nextPatch } : item);
   }
@@ -118,6 +124,7 @@
       details: String(values.details ?? '').trim(),
       priority: PRIORITIES.has(values.priority) ? values.priority : 'medium',
       dueDate: normalizeDueDate(values.dueDate),
+      dueTime: normalizeDueTime(values.dueTime),
       tags: normalizeTags(values.tags),
       projectTitle: project,
       done: Boolean(values.done),
@@ -144,6 +151,7 @@
       next.dueDate = normalizeDueDate(next.dueDate);
       if (target.scheduleOnly && !next.dueDate) throw new Error('일정 날짜를 입력해 주세요.');
     }
+    if ('dueTime' in next) next.dueTime = normalizeDueTime(next.dueTime);
     delete next.projectTitle;
     delete next.activityOnly;
     delete next.scheduleOnly;
@@ -167,6 +175,8 @@
       if (Boolean(a.done) !== Boolean(b.done)) return Number(a.done) - Number(b.done);
       const dueDiff = parseDateMs(a.dueDate) - parseDateMs(b.dueDate);
       if (Number.isFinite(dueDiff) && dueDiff !== 0) return dueDiff;
+      const timeDiff=String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));
+      if(timeDiff!==0)return timeDiff;
       return String(a.title||'').localeCompare(String(b.title||''), 'ko');
     });
   }
@@ -174,6 +184,8 @@
     return [...items].sort((a,b)=>{
       const diff = parseDateMs(a.dueDate) - parseDateMs(b.dueDate);
       if (Number.isFinite(diff) && diff !== 0) return diff;
+      const timeDiff=String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));
+      if(timeDiff!==0)return timeDiff;
       return String(a.title||'').localeCompare(String(b.title||''), 'ko');
     });
   }
