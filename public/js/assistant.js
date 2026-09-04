@@ -2,6 +2,8 @@
   const GPA=root.GPA,s=GPA.state,$=GPA.$,esc=GPA.esc;
   const typeLabels={todo:'할 일',memo:'메모',project:'프로젝트'};
   const priorityLabels={high:'높음',medium:'보통',low:'낮음'};
+  const filterLabels={todo:'할 일',memo:'메모',project:'장기 프로젝트',done:'완료'};
+  let activeFilter='todo';
   function setInboxError(message=''){
     const el=$('inboxError');if(!el)return;
     el.textContent=message;el.style.display=message?'block':'none';
@@ -62,16 +64,23 @@
     const tags=(Array.isArray(x.tags)?x.tags:[]).map(tag=>`<span class="chip tag-chip">#${esc(tag)}</span>`).join('');
     return `<div class="item" style="${x.done?'opacity:.55':''}"><div class="itemrow"><div class="assistant-content"><div class="title">${esc(x.title)}</div><div class="details">${esc(x.details||'')}</div><div class="meta"><span class="chip">${esc(typeLabels[x.type]||x.type)}</span><span class="chip ${esc(x.priority||'medium')}">${esc(priorityLabels[x.priority||'medium']||x.priority)}</span>${x.dueDate?`<span class="chip">${esc(x.dueDate)}</span>`:''}${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div></div><div class="actions"><button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost" data-assistant-action="toggle" data-id="${x.id}">${x.done?'되돌리기':'완료'}</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button></div></div></div>`;
   }
+  function setActiveFilter(filter){
+    if(!['todo','memo','project','done'].includes(filter))return;
+    activeFilter=filter;s.editingAssistantId=null;render();
+  }
   function render(){
     $('todoKpi').textContent=s.assistant.filter(x=>x.type==='todo'&&!x.done).length;
     $('memoKpi').textContent=s.assistant.filter(x=>x.type==='memo'&&!x.done).length;
     $('projKpi').textContent=s.assistant.filter(x=>x.type==='project'&&!x.done).length;
     $('doneKpi').textContent=s.assistant.filter(x=>x.done).length;
-    $('assistantList').innerHTML=s.assistant.length?s.assistant.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join(''):'<div class="empty">저장된 항목이 없습니다.</div>';
+    document.querySelectorAll('[data-assistant-filter]').forEach(tab=>{const selected=tab.dataset.assistantFilter===activeFilter;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});
+    const visible=AssistantUtils.filterAssistantItems(s.assistant,activeFilter);
+    $('assistantList').innerHTML=visible.length?visible.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join(''):`<div class="empty">${esc(filterLabels[activeFilter])} 항목이 없습니다.</div>`;
   }
   function bind(){
     $('analyzeInbox').addEventListener('click',analyzeInbox);
     $('inboxText').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyzeInbox();}});
+    document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter);});
     $('assistantList').addEventListener('click',e=>{const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':startEdit(id);break;case'toggle':toggle(id);break;case'delete':remove(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;}});
   }
 
