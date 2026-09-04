@@ -2,10 +2,16 @@ const fs=require('fs');
 const { originalFromStoredName }=require('../document-store');
 const { send,readJsonBody,serveStatic }=require('./http');
 
-function createRequestHandler({port,publicDir,version,openai,storage,documentStore,extractDocxText}){
+function createRequestHandler({port,publicDir,version,openai,storage,documentStore,extractDocxText,systemSettings}){
   return async function handler(req,res){
     try{
       if(req.method==='GET'&&req.url==='/api/config') return send(res,200,JSON.stringify({configured:openai.configured,model:openai.model,version,storage:storage.info()}));
+      if(req.method==='GET'&&req.url==='/api/system/settings') return send(res,200,JSON.stringify({ok:true,...systemSettings.get()}));
+      if(req.method==='POST'&&req.url==='/api/system/settings'){
+        const payload=await readJsonBody(req,100_000);
+        try{return send(res,200,JSON.stringify({ok:true,...systemSettings.save(payload||{})}));}
+        catch(e){return send(res,500,JSON.stringify({error:e?.message||'실행 설정을 저장하지 못했습니다.'}));}
+      }
       if(req.method==='GET'&&req.url==='/api/data'){
         const info=storage.info();if(!info.available)return send(res,200,JSON.stringify({...info,state:null}));
         let state=null,error=null;try{state=storage.readState();}catch(e){error=e?.message||'OneDrive 데이터 파일을 읽지 못했습니다.';}
