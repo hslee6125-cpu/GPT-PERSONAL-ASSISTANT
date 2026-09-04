@@ -7,5 +7,5 @@
   };
   function bindTabs(){document.querySelectorAll('.subtab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.subtab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.recipe-source').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.source).classList.add('active');}));}
   GPA.renderAll=()=>{GPA.dashboard.render();GPA.calendar.render();GPA.assistant.render();GPA.cooking.render();GPA.recipes.renderLibrary();};
-  bindTabs();GPA.navigation.bind();GPA.search.bind();GPA.calendar.bind();GPA.dashboard.bind();GPA.assistant.bind();GPA.documents.bind();GPA.recipes.bind();GPA.cooking.bind();GPA.systemSettings.bind();apiConfig();GPA.systemSettings.load();GPA.renderAll();GPA.initializeOneDriveData();GPA.documents.loadArchive();
+  bindTabs();GPA.navigation.bind();GPA.search.bind();GPA.calendar.bind();GPA.dashboard.bind();GPA.assistant.bind();GPA.documents.bind();GPA.recipes.bind();GPA.cooking.bind();GPA.systemSettings.bind();GPA.settingsInfo.bind();apiConfig();GPA.systemSettings.load();GPA.settingsInfo.load();GPA.renderAll();GPA.initializeOneDriveData();GPA.documents.loadArchive();
 })(window);
