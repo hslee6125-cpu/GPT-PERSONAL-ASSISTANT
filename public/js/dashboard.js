@@ -1,22 +1,32 @@
 (function(root){
   const GPA=root.GPA,s=GPA.state,$=GPA.$,esc=GPA.esc;
+  const dashboardCollapseState='gpt_pa_v4_dashboard_collapsed';
+  let quickEditorKind=null;
+
   function weekdayLabel(dateString){
     const [y,m,d]=dateString.split('-').map(Number);const dt=new Date(y,m-1,d);
     return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(dt);
   }
   function empty(text){return `<div class="empty compact">${esc(text)}</div>`;}
   function dashboardData(){return DashboardUtils.buildTodayDashboard({assistant:s.assistant,cooking:s.cooking,today:GPA.today()});}
+  function collapsedState(){try{const v=JSON.parse(localStorage.getItem(dashboardCollapseState)||'{}');return v&&typeof v==='object'?v:{};}catch{return {};}}
+  function setCollapsed(key,value){const state=collapsedState();state[key]=Boolean(value);localStorage.setItem(dashboardCollapseState,JSON.stringify(state));}
+  function sectionCard(key,title,body,{wide=false,action=''}={}){
+    const collapsed=Boolean(collapsedState()[key]);
+    return `<section class="card pad today-card ${wide?'today-wide':''} ${collapsed?'is-collapsed':''}" data-dashboard-section="${key}"><div class="today-card-head"><h3>${title}</h3><div class="today-card-actions">${action}<button type="button" class="today-collapse-button" data-dashboard-collapse="${key}" aria-expanded="${collapsed?'false':'true'}" aria-label="${collapsed?'펼치기':'접기'}">${collapsed?'＋':'−'}</button></div></div><div class="today-card-body" ${collapsed?'hidden':''}>${body}</div></section>`;
+  }
+  function timeLabel(item){return item.dueTime?`<span class="today-time">${esc(item.dueTime)}</span>`:'';}
   function todoRows(items,{overdue=false}={}){
     if(!items.length)return empty(overdue?'기한이 지난 할 일이 없습니다.':'오늘 할 일이 없습니다.');
-    return `<div class="today-list">${items.map(item=>`<div class="today-row"><button type="button" class="mini-check" data-dashboard-toggle="${item.id}" aria-label="완료"></button><button type="button" class="today-row-main" data-dashboard-assistant="todo"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}</button>${overdue?`<span class="today-overdue">D+${item.overdueDays}</span>`:(item.dueDate?`<span class="chip">${esc(item.dueDate)}</span>`:'')}</div>`).join('')}</div>`;
+    return `<div class="today-list">${items.map(item=>`<div class="today-row">${timeLabel(item)}<button type="button" class="mini-check" data-dashboard-toggle="${item.id}" aria-label="완료"></button><button type="button" class="today-row-main" data-dashboard-assistant="todo"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}</button>${overdue?`<span class="today-overdue">D+${item.overdueDays}</span>`:(item.dueDate?`<span class="chip">${esc(item.dueDate)}</span>`:'')}</div>`).join('')}</div>`;
   }
   function scheduleRows(items){
     if(!items.length)return empty('오늘 일정이 없습니다.');
-    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" ${item.projectTitle?`data-dashboard-project="${esc(item.projectTitle)}"`:'data-dashboard-assistant="todo"'}><span class="today-date-badge">오늘</span><span class="today-row-main"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}${item.details?`<span>${esc(item.details)}</span>`:''}</span></button>`).join('')}</div>`;
+    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" ${item.projectTitle?`data-dashboard-project="${esc(item.projectTitle)}"`:'data-dashboard-assistant="todo"'}>${timeLabel(item)}<span class="today-date-badge">오늘</span><span class="today-row-main"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}${item.details?`<span>${esc(item.details)}</span>`:''}</span></button>`).join('')}</div>`;
   }
   function upcomingRows(items){
     if(!items.length)return empty('7일 안에 예정된 마감이 없습니다.');
-    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" ${item.projectTitle?`data-dashboard-project="${esc(item.projectTitle)}"`:`data-dashboard-assistant="${item.scheduleOnly?'project':'todo'}"`}><span class="today-date-badge">${esc(item.dueDate.slice(5))}</span><span class="today-row-main"><b>${esc(item.title)}</b><span>${item.scheduleOnly?'일정':'할 일'}${item.projectTitle?` · ${esc(item.projectTitle)}`:''}</span></span></button>`).join('')}</div>`;
+    return `<div class="today-list">${items.map(item=>`<button type="button" class="today-row today-click-row" ${item.projectTitle?`data-dashboard-project="${esc(item.projectTitle)}"`:`data-dashboard-assistant="${item.scheduleOnly?'project':'todo'}"`}><span class="today-date-badge">${esc(item.dueDate.slice(5))}${item.dueTime?`<small>${esc(item.dueTime)}</small>`:''}</span><span class="today-row-main"><b>${esc(item.title)}</b><span>${item.scheduleOnly?'일정':'할 일'}${item.projectTitle?` · ${esc(item.projectTitle)}`:''}</span></span></button>`).join('')}</div>`;
   }
   function projectRows(projects){
     if(!projects.length)return empty('진행 중인 프로젝트가 없습니다.');
@@ -30,14 +40,31 @@
     if(!projects.length)return empty('7일 안에 예정된 요리 프로젝트가 없습니다.');
     return `<div class="today-list">${projects.map(project=>`<button type="button" class="today-row today-click-row" data-dashboard-cooking="${project.id}"><span class="today-date-badge">${esc(project.date.slice(5))}</span><span class="today-row-main"><b>${esc(project.name)}</b><span>${Number(project.servings)>0?`${esc(project.servings)}인 · `:''}레시피 ${(project.recipes||[]).length}개</span></span></button>`).join('')}</div>`;
   }
+  function quickEditor(){
+    if(!quickEditorKind)return'';
+    const kind=quickEditorKind;const dated=kind==='todo'||kind==='schedule';const label=kind==='todo'?'할 일':kind==='memo'?'메모':'일정';
+    return `<div class="card pad today-quick-editor" data-dashboard-quick-editor="${kind}"><div class="today-card-head"><h3>${label} 빠른 추가</h3><button type="button" class="text-button" data-dashboard-quick-cancel>닫기</button></div><div class="today-quick-grid"><div class="edit-span"><label>제목</label><input id="dashboardQuickTitle" maxlength="200" placeholder="${label} 제목"></div><div class="edit-span"><label>상세 내용</label><textarea id="dashboardQuickDetails" placeholder="선택 사항"></textarea></div>${dated?`<div><label>${kind==='schedule'?'날짜':'마감일'}</label><input id="dashboardQuickDate" type="date" value="${esc(GPA.today())}"></div><div><label>시간</label><input id="dashboardQuickTime" type="time"></div>`:''}<div class="edit-span"><label>연결 프로젝트</label><input id="dashboardQuickProject" placeholder="선택 사항"></div></div><div id="dashboardQuickError" class="error"></div><div class="actions"><button type="button" class="ghost small" data-dashboard-quick-cancel>취소</button><button type="button" class="primary small" data-dashboard-quick-save>저장</button></div></div>`;
+  }
   function render(){
     const box=$('todayDashboard');if(!box)return;const d=dashboardData();const today=GPA.today();
-    box.innerHTML=`<div class="today-hero"><div><div class="today-eyebrow">TODAY</div><h2>${esc(weekdayLabel(today))}</h2><div class="notice" style="margin:4px 0 0">오늘 필요한 일과 가까운 마감만 모았습니다.</div></div><button type="button" class="ghost small" data-dashboard-assistant="todo">개인 비서 열기</button></div>
+    box.innerHTML=`<div class="today-hero"><div><div class="today-eyebrow">TODAY</div><h2>${esc(weekdayLabel(today))}</h2><div class="notice" style="margin:4px 0 0">오늘 필요한 일과 가까운 마감만 모았습니다.</div></div><div class="today-hero-actions"><div class="today-quick-actions"><button type="button" class="ghost small" data-dashboard-quick-add="todo">+ 할 일</button><button type="button" class="ghost small" data-dashboard-quick-add="memo">+ 메모</button><button type="button" class="ghost small" data-dashboard-quick-add="schedule">+ 일정</button></div><button type="button" class="ghost small" data-dashboard-assistant="todo">개인 비서 열기</button></div></div>
+      ${quickEditor()}
       <div class="today-kpis"><div class="today-kpi"><b>${d.kpis.todayTodos}</b><span>오늘 할 일</span></div><div class="today-kpi"><b>${d.kpis.todaySchedules}</b><span>오늘 일정</span></div><div class="today-kpi ${d.kpis.overdueTodos?'warn':''}"><b>${d.kpis.overdueTodos}</b><span>기한 지남</span></div><div class="today-kpi"><b>${d.kpis.activeProjects}</b><span>진행 프로젝트</span></div></div>
-      <div class="today-grid"><section class="card pad today-card"><div class="today-card-head"><h3>오늘 할 일</h3><button class="text-button" data-dashboard-assistant="todo">전체 보기</button></div>${todoRows(d.todayTodos)}</section><section class="card pad today-card"><div class="today-card-head"><h3>오늘 일정</h3><span class="badge">${d.todaySchedules.length}개</span></div>${scheduleRows(d.todaySchedules)}</section><section class="card pad today-card"><div class="today-card-head"><h3>기한 지난 할 일</h3><button class="text-button" data-dashboard-assistant="todo">전체 보기</button></div>${todoRows(d.overdueTodos,{overdue:true})}</section><section class="card pad today-card"><div class="today-card-head"><h3>다가오는 마감</h3><span class="badge">7일</span></div>${upcomingRows(d.upcoming)}</section><section class="card pad today-card today-wide"><div class="today-card-head"><h3>진행 중 프로젝트</h3><button class="text-button" data-dashboard-assistant="project">프로젝트 허브</button></div>${projectRows(d.projects)}</section><section class="card pad today-card today-wide"><div class="today-card-head"><h3>최근 메모</h3><button class="text-button" data-dashboard-assistant="memo">메모 보기</button></div>${memoCards(d.recentMemos)}</section><section class="card pad today-card today-wide"><div class="today-card-head"><h3>요리 일정</h3><button class="text-button" data-dashboard-cooking-view>요리 프로젝트</button></div>${cookingRows(d.cookingUpcoming)}</section></div>`;
+      <div class="today-grid">${sectionCard('todayTodos','오늘 할 일',todoRows(d.todayTodos),{action:'<button class="text-button" data-dashboard-assistant="todo">전체 보기</button>'})}${sectionCard('todaySchedules','오늘 일정',scheduleRows(d.todaySchedules),{action:`<span class="badge">${d.todaySchedules.length}개</span>`})}${sectionCard('overdue','기한 지난 할 일',todoRows(d.overdueTodos,{overdue:true}),{action:'<button class="text-button" data-dashboard-assistant="todo">전체 보기</button>'})}${sectionCard('upcoming','다가오는 마감',upcomingRows(d.upcoming),{action:'<span class="badge">7일</span>'})}${sectionCard('projects','진행 중 프로젝트',projectRows(d.projects),{wide:true,action:'<button class="text-button" data-dashboard-assistant="project">프로젝트 허브</button>'})}${sectionCard('memos','최근 메모',memoCards(d.recentMemos),{wide:true,action:'<button class="text-button" data-dashboard-assistant="memo">메모 보기</button>'})}${sectionCard('cooking','요리 일정',cookingRows(d.cookingUpcoming),{wide:true,action:'<button class="text-button" data-dashboard-cooking-view>요리 프로젝트</button>'})}</div>`;
+  }
+  function saveQuick(){
+    const error=$('dashboardQuickError');
+    try{
+      const item=DashboardUtils.createQuickItem(quickEditorKind,{title:$('dashboardQuickTitle')?.value,details:$('dashboardQuickDetails')?.value,dueDate:$('dashboardQuickDate')?.value,dueTime:$('dashboardQuickTime')?.value,projectTitle:$('dashboardQuickProject')?.value},{id:GPA.uid(),createdAt:new Date().toISOString()});
+      s.assistant.unshift(item);quickEditorKind=null;GPA.persist('dashboard-quick-add');
+    }catch(e){if(error){error.textContent=e.message;error.style.display='block';}else alert(e.message);}
   }
   function bind(){
     $('todayDashboard')?.addEventListener('click',e=>{
+      const quick=e.target.closest('[data-dashboard-quick-add]');if(quick){quickEditorKind=quick.dataset.dashboardQuickAdd;render();requestAnimationFrame(()=>$('dashboardQuickTitle')?.focus());return;}
+      if(e.target.closest('[data-dashboard-quick-cancel]')){quickEditorKind=null;render();return;}
+      if(e.target.closest('[data-dashboard-quick-save]')){saveQuick();return;}
+      const collapse=e.target.closest('[data-dashboard-collapse]');if(collapse){const key=collapse.dataset.dashboardCollapse;setCollapsed(key,!Boolean(collapsedState()[key]));render();return;}
       const toggle=e.target.closest('[data-dashboard-toggle]');if(toggle){const item=s.assistant.find(x=>x.id===toggle.dataset.dashboardToggle&&!x.deletedAt);if(item){item.done=!item.done;GPA.persist('dashboard-toggle');}return;}
       const project=e.target.closest('[data-dashboard-project]');if(project){GPA.showView('assistant');GPA.assistant.openProject(project.dataset.dashboardProject);return;}
       const assistant=e.target.closest('[data-dashboard-assistant]');if(assistant){GPA.showView('assistant');GPA.assistant.openFilter(assistant.dataset.dashboardAssistant);return;}
