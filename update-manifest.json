@@ -1,150 +1,26 @@
 {
-  "version": "5.1.2",
+  "version": "5.1.3",
   "runNpmInstall": false,
   "files": [
     {
-      "path": "server.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server.js"
-    },
-    {
-      "path": "server/http.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/http.js"
-    },
-    {
-      "path": "server/router.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/router.js"
-    },
-    {
-      "path": "server/services/assistant-policy.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/assistant-policy.js"
-    },
-    {
-      "path": "server/services/docx.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/docx.js"
-    },
-    {
-      "path": "server/services/openai.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/openai.js"
-    },
-    {
-      "path": "server/services/storage.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/storage.js"
-    },
-    {
-      "path": "document-store.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/document-store.js"
-    },
-    {
-      "path": "recipe-policy.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/recipe-policy.js"
+      "path": "public/app.css",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"
     },
     {
       "path": "public/index.html",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
     },
     {
-      "path": "public/app.css",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"
-    },
-    {
-      "path": "public/recipe-utils.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/recipe-utils.js"
-    },
-    {
-      "path": "public/js/assistant-utils.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-utils.js"
-    },
-    {
-      "path": "public/js/assistant-projects.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-projects.js"
-    },
-    {
-      "path": "public/js/core.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/core.js"
-    },
-    {
-      "path": "public/js/storage.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/storage.js"
-    },
-    {
-      "path": "public/js/search-utils.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/search-utils.js"
-    },
-    {
-      "path": "public/js/search.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/search.js"
-    },
-    {
-      "path": "public/js/assistant.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant.js"
-    },
-    {
-      "path": "public/js/documents.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/documents.js"
-    },
-    {
-      "path": "public/js/recipes.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/recipes.js"
-    },
-    {
-      "path": "public/js/cooking.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/cooking.js"
-    },
-    {
-      "path": "public/js/navigation.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/navigation.js"
-    },
-    {
-      "path": "public/js/calendar-utils.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/calendar-utils.js"
-    },
-    {
-      "path": "public/js/calendar.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/calendar.js"
-    },
-    {
       "path": "public/js/main.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/main.js"
     },
     {
-      "path": "server/services/system-settings.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/system-settings.js"
+      "path": "public/js/settings-info.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/settings-info.js"
     },
     {
-      "path": "server/services/update-watcher.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/update-watcher.js"
-    },
-    {
-      "path": "public/js/system-settings.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/system-settings.js"
-    },
-    {
-      "path": "updater.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/updater.js"
-    },
-    {
-      "path": "launcher.ps1",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/launcher.ps1"
-    },
-    {
-      "path": "launcher.vbs",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/launcher.vbs"
-    },
-    {
-      "path": "restart-helper.vbs",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/restart-helper.vbs"
-    },
-    {
-      "path": "public/js/dashboard-utils.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard-utils.js"
-    },
-    {
-      "path": "public/js/dashboard-actions.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard-actions.js"
-    },
-    {
-      "path": "public/js/dashboard.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard.js"
+      "path": "public/js/storage.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/storage.js"
     }
   ]
 }
