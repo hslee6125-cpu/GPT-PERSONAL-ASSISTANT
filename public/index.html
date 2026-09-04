@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.7.3</title>
+<title>GPT Personal Assistant v4.8.0</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
   <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 요리 프로젝트/레시피 + Word 원본 보관 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.7.3</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.8.0</div>
 <div id="storageBadge" class="update-connected storage-status">OneDrive 저장 상태 확인 중...</div>
 <div class="card pad unified-inbox">
   <div class="unified-inbox-head">
@@ -30,10 +30,14 @@
   <div id="inboxError" class="error" aria-live="assertive"></div>
 </div>
 <div class="tabs">
-  <button class="tab active" data-view="assistant">개인 비서</button>
+  <button class="tab active" data-view="today">오늘</button>
+  <button class="tab" data-view="assistant">개인 비서</button>
   <button class="tab" data-view="cooking">요리 프로젝트</button>
 </div>
-<section id="assistant" class="view active">
+<section id="today" class="view active">
+  <div id="todayDashboard" class="today-dashboard"></div>
+</section>
+<section id="assistant" class="view">
   <div class="card pad assistant-overview-card">
     <div class="kpis assistant-filter-tabs" role="tablist" aria-label="개인 비서 항목 필터">
       <button type="button" data-assistant-filter="todo" class="kpi assistant-filter-tab active" role="tab" aria-selected="true"><b id="todoKpi">0</b><span>할 일</span></button>
@@ -178,12 +182,14 @@
 </div>
 <script src="/recipe-utils.js"></script>
 <script src="/js/assistant-utils.js"></script>
+<script src="/js/dashboard-utils.js"></script>
 <script src="/js/core.js"></script>
 <script src="/js/storage.js"></script>
 <script src="/js/assistant.js"></script>
 <script src="/js/documents.js"></script>
 <script src="/js/recipes.js"></script>
 <script src="/js/cooking.js"></script>
+<script src="/js/dashboard.js"></script>
 <script src="/js/system-settings.js"></script>
 <script src="/js/main.js"></script>
 </body>
