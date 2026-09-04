@@ -136,5 +136,7 @@
       if(e.target.id==='createAssistantProject'){createProject();}
     });
   }
-  GPA.assistant={render,bind};
+  function openFilter(filter){setActiveFilter(filter);}
+  function openProject(key){activeProjectKey=String(key||'');setActiveFilter('project');}
+  GPA.assistant={render,bind,openFilter,openProject};
 })(window);
