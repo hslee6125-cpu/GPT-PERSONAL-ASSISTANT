@@ -46,6 +46,68 @@
     return (Array.isArray(recipes) ? recipes : []).filter(recipe => recipe?.id && !assigned.has(recipe.id));
   }
 
+  function getRecipeProjectIds(cooking, recipeId) {
+    const ids = [];
+    for (const project of Array.isArray(cooking) ? cooking : []) {
+      if (!project?.id) continue;
+      if ((Array.isArray(project.recipes) ? project.recipes : []).some(use => use?.recipeId === recipeId)) ids.push(project.id);
+    }
+    return ids;
+  }
+
+  function getRecipeProjectState(cooking, recipeId) {
+    const projectIds = getRecipeProjectIds(cooking, recipeId);
+    if (!projectIds.length) return { kind:'none', projectId:null, projectIds };
+    if (projectIds.length === 1) return { kind:'single', projectId:projectIds[0], projectIds };
+    return { kind:'multiple', projectId:null, projectIds };
+  }
+
+  function setRecipeProject(state, recipeId, projectId, targetServings) {
+    const source = state && typeof state === 'object' ? state : {};
+    const recipes = clone(Array.isArray(source.recipes) ? source.recipes : []);
+    const cooking = clone(Array.isArray(source.cooking) ? source.cooking : []);
+    const recipe = recipes.find(item => item?.id === recipeId);
+    if (!recipe) return { recipes, cooking };
+
+    const previousUses = [];
+    for (const project of cooking) {
+      for (const use of Array.isArray(project?.recipes) ? project.recipes : []) {
+        if (use?.recipeId === recipeId) previousUses.push({ projectId:project.id, use });
+      }
+      project.recipes = (Array.isArray(project?.recipes) ? project.recipes : []).filter(use => use?.recipeId !== recipeId);
+    }
+
+    const target = cooking.find(project => project?.id === projectId);
+    if (!target) return { recipes, cooking };
+
+    const explicit = Number(targetServings);
+    const priorInTarget = previousUses.find(item => item.projectId === projectId)?.use?.targetServings;
+    const priorAny = previousUses[0]?.use?.targetServings;
+    const fallback = Number(target.servings) || Number(recipe.baseServings) || 1;
+    const servings = Number.isFinite(explicit) && explicit >= 0
+      ? explicit
+      : Number.isFinite(Number(priorInTarget)) && Number(priorInTarget) >= 0
+        ? Number(priorInTarget)
+        : Number.isFinite(Number(priorAny)) && Number(priorAny) >= 0
+          ? Number(priorAny)
+          : fallback;
+    target.recipes = Array.isArray(target.recipes) ? target.recipes : [];
+    target.recipes.push({ recipeId, targetServings:servings });
+    return { recipes, cooking };
+  }
+
+  function duplicateRecipe(recipes, recipeId, newId, createdAt) {
+    const source = Array.isArray(recipes) ? recipes : [];
+    const recipe = source.find(item => item?.id === recipeId);
+    if (!recipe || !newId) return clone(source);
+    const copy = clone(recipe);
+    copy.id = newId;
+    copy.name = `${String(recipe.name || '레시피').trim() || '레시피'} 복사본`;
+    copy.createdAt = createdAt || new Date().toISOString();
+    delete copy.updatedAt;
+    return [copy, ...clone(source)];
+  }
+
   function assignRecipeToProject(state, projectId, recipeId, targetServings) {
     const source = state && typeof state === 'object' ? state : {};
     const recipes = clone(Array.isArray(source.recipes) ? source.recipes : []);
@@ -111,6 +173,10 @@
     unlinkSourceDocumentFromRecipes,
     getAssignedRecipeIds,
     getUnassignedRecipes,
+    getRecipeProjectIds,
+    getRecipeProjectState,
+    setRecipeProject,
+    duplicateRecipe,
     assignRecipeToProject,
     unlinkRecipeFromProject,
     moveProjectRecipe,
