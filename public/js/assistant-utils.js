@@ -26,6 +26,44 @@
     const tags = Array.isArray(value) ? value : [];
     return [...new Set(tags.map(tag => String(tag ?? '').trim()).filter(Boolean))];
   }
+
+  function parseTodayScheduleCommand(value, today) {
+    const text = String(value ?? '').trim();
+    if (!text.startsWith('오늘일정')) return null;
+    const dueDate = normalizeDueDate(today);
+    if (!dueDate) return null;
+    let body = text.slice('오늘일정'.length).trim();
+    if (!body) return null;
+
+    let dueTime = null;
+    const patterns = [
+      /(?:^|\s)(오전|오후)?\s*(\d{1,2}):(\d{2})(?=\s|$)/,
+      /(?:^|\s)(오전|오후)?\s*(\d{1,2})시(?:\s*(\d{1,2})분)?(?:에)?(?=\s|$)/
+    ];
+    for (const pattern of patterns) {
+      const match = body.match(pattern);
+      if (!match) continue;
+      let hour = Number(match[2]);
+      const minute = Number(match[3] || 0);
+      const meridiem = match[1] || '';
+      if (meridiem) {
+        if (hour < 1 || hour > 12 || minute > 59) continue;
+        if (meridiem === '오전' && hour === 12) hour = 0;
+        if (meridiem === '오후' && hour !== 12) hour += 12;
+      } else if (hour > 23 || minute > 59) continue;
+      dueTime = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+      body = `${body.slice(0, match.index)} ${body.slice(match.index + match[0].length)}`.replace(/\s+/g,' ').trim();
+      break;
+    }
+
+    body = body.replace(/\s*(?:추가해(?:줘)?|추가|등록해(?:줘)?|등록)\s*[.!?]?$/,'').trim();
+    if (!body) return null;
+    return {
+      type:'todo', title:body, details:'', priority:'medium', dueDate, dueTime,
+      tags:[], projectTitle:null, scheduleOnly:true
+    };
+  }
+
   function normalizeInboxItem(item) {
     if (!item || typeof item !== 'object') return null;
     const title = String(item.title ?? '').trim();
@@ -274,6 +312,7 @@
 
   return {
     normalizeInboxItem,
+    parseTodayScheduleCommand,
     summarizeInboxItems,
     filterAssistantItems,
     updateAssistantItem,
