@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.6.0</title>
+<title>GPT Personal Assistant v4.6.1</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
 <div class="wrap">
 <header>
-  <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 레시피 + Word 원본 보관 + 요리 프로젝트 + OneDrive 동기화</div></div>
+  <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 요리 프로젝트/레시피 + Word 원본 보관 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.6.0</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.6.1</div>
 <div id="storageBadge" class="update-connected storage-status">OneDrive 저장 상태 확인 중...</div>
 <div class="card pad unified-inbox">
   <div class="unified-inbox-head">
@@ -31,121 +31,105 @@
 </div>
 <div class="tabs">
   <button class="tab active" data-view="assistant">개인 비서</button>
-  <button class="tab" data-view="recipes">레시피</button>
   <button class="tab" data-view="cooking">요리 프로젝트</button>
 </div>
 <section id="assistant" class="view active">
   <div class="card pad">
-      <div class="kpis">
-        <div class="kpi"><b id="todoKpi">0</b><span>할 일</span></div>
-        <div class="kpi"><b id="memoKpi">0</b><span>메모</span></div>
-        <div class="kpi"><b id="projKpi">0</b><span>장기 프로젝트</span></div>
-        <div class="kpi"><b id="doneKpi">0</b><span>완료</span></div>
-      </div>
-      <div id="assistantList" class="list"></div>
-  </div>
-</section>
-<section id="recipes" class="view">
-  <div class="grid2">
-    <div class="card pad">
-      <h2>레시피 가져오기</h2>
-      <div class="subtabs">
-        <button class="subtab active" data-source="manualRecipe">직접 입력</button>
-        <button class="subtab" data-source="wordRecipe">Word 업로드</button>
-      </div>
-
-      <div id="manualRecipe" class="recipe-source active">
-        <textarea id="recipeText" placeholder="레시피가 여러 개여도 한 번에 입력할 수 있습니다.
-
-예)
-민어 무스
-기준 10인분
-민어살 500g
-생크림 200g
-동치미 젤리
-기준 10인분
-동치미 국물 250ml
-젤라틴 5g"></textarea>
-        <button id="parseRecipeText" class="primary full">GPT로 레시피 분석</button>
-      </div>
-      <div id="wordRecipe" class="recipe-source">
-        <input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
-        <div id="dropzone" class="dropzone">
-          <b>Word(.docx) 파일 선택</b>
-          <span>여기를 클릭하거나 파일을 끌어다 놓으세요.<br>일반 텍스트와 Word 표를 읽습니다.</span>
-        </div>
-        <div id="fileInfo" class="fileinfo"></div>
-        <button id="parseDocx" class="primary full">Word에서 레시피 찾기</button>
-        <div class="notice">업로드한 원본 Word 파일은 OneDrive에 자동 보관됩니다. 레시피를 삭제해도 원본 파일은 유지됩니다.<br>사진/스캔 이미지만 들어있는 Word 파일은 현재 버전에서 인식하지 않습니다.</div>
-      </div>
-      <div id="recipeError" class="error"></div>
-
-      <div id="recipePreview" class="preview-area">
-        <div class="preview-head">
-          <h2 style="margin:0">발견된 레시피</h2>
-          <span id="foundCount" class="badge"></span>
-        </div>
-        <div id="documentSummary" class="preview-summary"></div>
-        <div id="recipePreviewList" class="list"></div>
-        <div class="savebar">
-          <div>
-            <label>저장 후 요리 프로젝트에 연결</label>
-            <select id="saveToProject"></select>
-          </div>
-          <button id="cancelRecipePreview" class="ghost">취소</button>
-          <button id="saveSelectedRecipes" class="primary">선택 레시피 저장</button>
-        </div>
-      </div>
+    <div class="kpis">
+      <div class="kpi"><b id="todoKpi">0</b><span>할 일</span></div>
+      <div class="kpi"><b id="memoKpi">0</b><span>메모</span></div>
+      <div class="kpi"><b id="projKpi">0</b><span>장기 프로젝트</span></div>
+      <div class="kpi"><b id="doneKpi">0</b><span>완료</span></div>
     </div>
-    <div class="card pad">
-      <div class="itemrow">
-        <h2>레시피 데이터베이스</h2>
-        <div id="recipeCount" class="badge"></div>
-      </div>
-      <div id="recipeList" class="list"></div>
-      <div style="border-top:1px solid var(--line);margin:18px 0 14px"></div>
-      <div class="itemrow">
-        <div>
-          <h2 style="margin-bottom:3px">원본 Word 보관함</h2>
-          <div class="notice" style="margin:0">OneDrive에 보관된 원본입니다. 레시피를 삭제해도 파일은 남습니다.</div>
-        </div>
-        <button id="refreshDocuments" class="small ghost">새로고침</button>
-      </div>
-      <div id="documentArchive" class="list" style="margin-top:10px"></div>
-    </div>
+    <div id="assistantList" class="list"></div>
   </div>
 </section>
 <section id="cooking" class="view">
-  <div class="grid2">
-    <div>
+  <div class="cooking-layout">
+    <aside class="cooking-sidebar">
       <div class="card pad">
         <h2>요리 프로젝트 만들기</h2>
         <label>프로젝트명</label>
-        <input id="cookingProjectName" placeholder="예) 2026가을">
+        <input id="cookingProjectName" placeholder="예) 친구 6인 디너">
+        <div class="mini-grid">
+          <div><label>날짜</label><input id="cookingProjectDate" type="date"></div>
+          <div><label>기본 인원</label><input id="cookingProjectServings" type="number" min="1" step="1" placeholder="6"></div>
+        </div>
         <label>메모</label>
-        <textarea id="cookingProjectNote" style="min-height:90px" placeholder="예) 10월 디너 코스 / 40명 기준"></textarea>
+        <textarea id="cookingProjectNote" style="min-height:90px" placeholder="예) 토요일 20:00 서비스 / 한식 프렌치 코스"></textarea>
         <button id="createCookingProject" class="primary full">프로젝트 생성</button>
       </div>
       <div class="card pad" style="margin-top:14px">
-        <h2>요리 프로젝트 목록</h2>
+        <div class="itemrow"><h2>요리 프로젝트</h2><span id="cookingProjectCount" class="badge"></span></div>
         <div id="cookingProjectList" class="list"></div>
       </div>
-    </div>
-    <div class="card pad">
-      <div class="totalbar">
-        <div>
-          <h2 style="margin-bottom:3px">프로젝트 재료 총정리</h2>
-          <div class="notice" style="margin:0">레시피별 목표 인분을 기준으로 프로그램이 직접 계산합니다.</div>
+      <div class="card pad" style="margin-top:14px">
+        <div class="itemrow">
+          <div><h2 style="margin-bottom:3px">미분류 레시피</h2><div class="notice" style="margin:0">기존 레시피 중 어느 프로젝트에도 연결되지 않은 항목입니다.</div></div>
+          <span id="unassignedCount" class="badge"></span>
         </div>
-        <div class="project-selector">
-          <select id="activeCookingProject"></select>
+        <div id="unassignedRecipes" class="list" style="margin-top:10px"></div>
+      </div>
+      <div class="card pad" style="margin-top:14px">
+        <div class="itemrow">
+          <div><h2 style="margin-bottom:3px">원본 Word 보관함</h2><div class="notice" style="margin:0">OneDrive에 보관된 원본입니다. 레시피를 삭제해도 파일은 남습니다.</div></div>
+          <button id="refreshDocuments" class="small ghost">새로고침</button>
+        </div>
+        <div id="documentArchive" class="list" style="margin-top:10px"></div>
+      </div>
+    </aside>
+
+    <main class="cooking-main">
+      <div class="card pad">
+        <div class="totalbar cooking-project-head">
+          <div>
+            <h2 style="margin-bottom:3px">프로젝트 작업공간</h2>
+            <div class="notice" style="margin:0">레시피를 프로젝트 안에서 추가하고 코스 순서대로 관리합니다.</div>
+          </div>
+          <div class="project-selector"><select id="activeCookingProject"></select></div>
+        </div>
+        <div id="projectEditor"></div>
+      </div>
+
+      <div class="card pad" style="margin-top:14px">
+        <div class="itemrow">
+          <div><h2 style="margin-bottom:3px">프로젝트에 레시피 추가</h2><div class="notice" style="margin:0">현재 선택된 프로젝트에 바로 저장됩니다.</div></div>
+          <span id="activeProjectRecipeBadge" class="badge">프로젝트 선택 필요</span>
+        </div>
+        <div class="subtabs" style="margin-top:12px">
+          <button class="subtab active" data-source="manualRecipe">직접 입력</button>
+          <button class="subtab" data-source="wordRecipe">Word 업로드</button>
+        </div>
+        <div id="manualRecipe" class="recipe-source active">
+          <textarea id="recipeText" placeholder="레시피가 여러 개여도 한 번에 입력할 수 있습니다.\n\n예)\n민어 무스\n기준 6인분\n민어살 500g\n생크림 150g"></textarea>
+          <button id="parseRecipeText" class="primary full">GPT로 레시피 분석</button>
+        </div>
+        <div id="wordRecipe" class="recipe-source">
+          <input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+          <div id="dropzone" class="dropzone"><b>Word(.docx) 파일 선택</b><span>여기를 클릭하거나 파일을 끌어다 놓으세요.<br>일반 텍스트와 Word 표를 읽습니다.</span></div>
+          <div id="fileInfo" class="fileinfo"></div>
+          <button id="parseDocx" class="primary full">Word에서 레시피 찾기</button>
+          <div class="notice">업로드한 원본 Word 파일은 OneDrive에 자동 보관됩니다. 사진/스캔 이미지만 들어있는 Word 파일은 현재 버전에서 인식하지 않습니다.</div>
+        </div>
+        <div id="recipeError" class="error"></div>
+        <div id="recipePreview" class="preview-area">
+          <div class="preview-head"><h2 style="margin:0">발견된 레시피</h2><span id="foundCount" class="badge"></span></div>
+          <div id="documentSummary" class="preview-summary"></div>
+          <div id="recipePreviewList" class="list"></div>
+          <div class="savebar">
+            <div class="notice" style="margin:0;flex:1">선택한 레시피는 현재 요리 프로젝트에 저장됩니다.</div>
+            <button id="cancelRecipePreview" class="ghost">취소</button>
+            <button id="saveSelectedRecipes" class="primary">선택 레시피 저장</button>
+          </div>
         </div>
       </div>
-      <div id="projectEditor"></div>
-      <h3>전체 재료 합산</h3>
-      <div class="notice" style="margin-bottom:8px">g↔kg, ml↔L는 자동 통합합니다. 나머지는 같은 단위끼리 합산합니다.</div>
-      <div id="ingredientTotals"></div>
-    </div>
+
+      <div class="card pad" style="margin-top:14px">
+        <h2>전체 재료 합산</h2>
+        <div class="notice" style="margin-bottom:8px">목표 인분 기준으로 계산합니다. g↔kg, ml↔L는 자동 통합합니다.</div>
+        <div id="ingredientTotals"></div>
+      </div>
+    </main>
   </div>
 </section>
 </div>
