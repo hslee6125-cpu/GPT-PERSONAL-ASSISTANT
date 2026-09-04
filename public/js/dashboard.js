@@ -4,6 +4,8 @@
   let quickEditorKind=null;
   let quickMenuOpen=false;
   let editingTimeId=null;
+  let todoActionMenuId=null;
+  let todoActionMode=null;
 
   function weekdayLabel(dateString){
     const [y,m,d]=dateString.split('-').map(Number);const dt=new Date(y,m-1,d);
@@ -28,9 +30,20 @@
     if(item.dueTime)return `<button type="button" class="today-time today-time-button" data-dashboard-time-edit="${item.id}" title="시간 수정">${esc(item.dueTime)}</button>`;
     return `<button type="button" class="text-button today-time-assign" data-dashboard-time-edit="${item.id}">시간 지정</button>`;
   }
+  function todoActionControl(item){
+    const open=todoActionMenuId===item.id;
+    const projects=AssistantUtils.collectAssistantProjects(s.assistant).filter(project=>!project.done||project.title===item.projectTitle);
+    const projectNames=[...new Set(projects.map(project=>String(project.title||'').trim()).filter(Boolean))];
+    if(item.projectTitle&&!projectNames.includes(item.projectTitle))projectNames.unshift(item.projectTitle);
+    let menu='';
+    if(open&&todoActionMode==='date')menu=`<div class="today-todo-action-menu" role="menu"><label>날짜 변경</label><input id="dashboardTodoActionDate" type="date" value="${esc(item.dueDate||'')}"><div class="today-todo-action-editor-buttons"><button type="button" class="text-button" data-dashboard-todo-action-cancel>취소</button><button type="button" class="primary small" data-dashboard-todo-action-save="${item.id}" data-action-kind="date">저장</button></div></div>`;
+    else if(open&&todoActionMode==='project')menu=`<div class="today-todo-action-menu" role="menu"><label>프로젝트 변경</label><select id="dashboardTodoActionProject"><option value="">프로젝트 없음</option>${projectNames.map(name=>`<option value="${esc(name)}" ${name===item.projectTitle?'selected':''}>${esc(name)}</option>`).join('')}</select><div class="today-todo-action-editor-buttons"><button type="button" class="text-button" data-dashboard-todo-action-cancel>취소</button><button type="button" class="primary small" data-dashboard-todo-action-save="${item.id}" data-action-kind="project">저장</button></div></div>`;
+    else if(open)menu=`<div class="today-todo-action-menu" role="menu"><button type="button" data-dashboard-todo-action="date" data-id="${item.id}">날짜 변경</button><button type="button" data-dashboard-todo-action="project" data-id="${item.id}">프로젝트 변경</button><button type="button" class="danger" data-dashboard-todo-action="delete" data-id="${item.id}">삭제</button></div>`;
+    return `<span class="today-todo-action-wrap"><button type="button" class="today-todo-action-button" data-dashboard-todo-actions="${item.id}" aria-expanded="${open?'true':'false'}" aria-label="빠른 작업" title="빠른 작업">⋯</button>${menu}</span>`;
+  }
   function todoRows(items,{overdue=false}={}){
     if(!items.length)return empty(overdue?'기한이 지난 할 일이 없습니다.':'오늘 할 일이 없습니다.');
-    return `<div class="today-list">${items.map(item=>`<div class="today-row"><span class="today-complete-cell"><button type="button" class="mini-check" data-dashboard-toggle="${item.id}" aria-label="완료"></button></span><button type="button" class="today-row-main" data-dashboard-assistant="todo"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}</button><span class="today-row-meta"><span class="today-meta-time">${overdue?timeLabel(item):todoTimeControl(item)}</span>${item.dueDate?`<span class="today-meta-date chip">${esc(item.dueDate)}</span>`:''}${overdue?`<span class="today-overdue">D+${item.overdueDays}</span>`:''}</span></div>`).join('')}</div>`;
+    return `<div class="today-list">${items.map(item=>`<div class="today-row"><span class="today-complete-cell"><button type="button" class="mini-check" data-dashboard-toggle="${item.id}" aria-label="완료"></button></span><button type="button" class="today-row-main" data-dashboard-assistant="todo"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}</button><span class="today-row-meta"><span class="today-meta-time">${overdue?timeLabel(item):todoTimeControl(item)}</span>${item.dueDate?`<span class="today-meta-date chip">${esc(item.dueDate)}</span>`:''}${overdue?`<span class="today-overdue">D+${item.overdueDays}</span>`:''}${overdue?'':todoActionControl(item)}</span></div>`).join('')}</div>`;
   }
   function scheduleRows(items){
     if(!items.length)return empty('오늘 일정이 없습니다.');
@@ -75,7 +88,11 @@
     $('todayDashboard')?.addEventListener('click',e=>{
       const menuToggle=e.target.closest('[data-dashboard-quick-menu-toggle]');if(menuToggle){quickMenuOpen=!quickMenuOpen;render();return;}
       const quick=e.target.closest('[data-dashboard-quick-add]');if(quick){quickEditorKind=quick.dataset.dashboardQuickAdd;quickMenuOpen=false;render();requestAnimationFrame(()=>$('dashboardQuickTitle')?.focus());return;}
-      const timeEdit=e.target.closest('[data-dashboard-time-edit]');if(timeEdit){editingTimeId=timeEdit.dataset.dashboardTimeEdit;render();requestAnimationFrame(()=>$('dashboardInlineTime')?.focus());return;}
+      const todoActions=e.target.closest('[data-dashboard-todo-actions]');if(todoActions){const id=todoActions.dataset.dashboardTodoActions;todoActionMenuId=todoActionMenuId===id?null:id;todoActionMode=null;quickMenuOpen=false;render();return;}
+      const todoAction=e.target.closest('[data-dashboard-todo-action]');if(todoAction){const id=todoAction.dataset.id;const kind=todoAction.dataset.dashboardTodoAction;if(kind==='delete'){const item=s.assistant.find(x=>x.id===id&&!x.deletedAt);if(item&&confirm('이 할 일을 휴지통으로 이동할까요?')){s.assistant=AssistantUtils.softDeleteAssistantItem(s.assistant,id,new Date().toISOString());todoActionMenuId=null;todoActionMode=null;GPA.persist('dashboard-todo-delete');}return;}todoActionMenuId=id;todoActionMode=kind;render();requestAnimationFrame(()=>$(kind==='date'?'dashboardTodoActionDate':'dashboardTodoActionProject')?.focus());return;}
+      if(e.target.closest('[data-dashboard-todo-action-cancel]')){todoActionMode=null;render();return;}
+      const todoActionSave=e.target.closest('[data-dashboard-todo-action-save]');if(todoActionSave){const id=todoActionSave.dataset.dashboardTodoActionSave;const kind=todoActionSave.dataset.actionKind;const patch=kind==='date'?{dueDate:$('dashboardTodoActionDate')?.value||null}:{projectTitle:$('dashboardTodoActionProject')?.value||null};s.assistant=AssistantUtils.updateAssistantItem(s.assistant,id,patch);todoActionMenuId=null;todoActionMode=null;GPA.persist(kind==='date'?'dashboard-todo-date':'dashboard-todo-project');return;}
+      const timeEdit=e.target.closest('[data-dashboard-time-edit]');if(timeEdit){editingTimeId=timeEdit.dataset.dashboardTimeEdit;todoActionMenuId=null;todoActionMode=null;render();requestAnimationFrame(()=>$('dashboardInlineTime')?.focus());return;}
       if(e.target.closest('[data-dashboard-time-cancel]')){editingTimeId=null;render();return;}
       const timeSave=e.target.closest('[data-dashboard-time-save]');if(timeSave){const item=s.assistant.find(x=>x.id===timeSave.dataset.dashboardTimeSave&&!x.deletedAt);if(item){DashboardUtils.applyItemTime(item,$('dashboardInlineTime')?.value||'');editingTimeId=null;GPA.persist('dashboard-time');}return;}
       if(e.target.closest('[data-dashboard-quick-cancel]')){quickEditorKind=null;render();return;}
@@ -88,8 +105,8 @@
       const cooking=e.target.closest('[data-dashboard-cooking]');if(cooking){GPA.showView('cooking');GPA.cooking.openProject(cooking.dataset.dashboardCooking);return;}
       if(e.target.closest('[data-dashboard-cooking-view]')){GPA.showView('cooking');GPA.cooking.showMode('projects');}
     });
-    document.addEventListener('click',e=>{if(!quickMenuOpen)return;if(e.target.closest?.('[data-dashboard-quick-menu-toggle], .today-quick-menu'))return;quickMenuOpen=false;render();});
-    document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(quickMenuOpen||editingTimeId){quickMenuOpen=false;editingTimeId=null;render();}});
+    document.addEventListener('click',e=>{let changed=false;if(quickMenuOpen&&!e.target.closest?.('[data-dashboard-quick-menu-toggle], .today-quick-menu')){quickMenuOpen=false;changed=true;}if(todoActionMenuId&&!e.target.closest?.('[data-dashboard-todo-actions], .today-todo-action-menu')){todoActionMenuId=null;todoActionMode=null;changed=true;}if(changed)render();});
+    document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(quickMenuOpen||editingTimeId||todoActionMenuId){quickMenuOpen=false;editingTimeId=null;todoActionMenuId=null;todoActionMode=null;render();}});
   }
   GPA.dashboard={render,bind};
 })(window);
