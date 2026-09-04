@@ -12,13 +12,14 @@
     const input=$('inboxText');const text=input.value.trim();if(!text)return;
     if(GPA.search?.handleSubmit(text)){GPA.search.refreshButtonMode();return;}
     GPA.search?.clear();
-    const todaySchedule=AssistantUtils.parseTodayScheduleCommand(text,GPA.today());
-    if(text.startsWith('오늘일정')){
+    const localCommand=AssistantUtils.parseLocalInboxCommand(text,GPA.today());
+    if(localCommand){
       setInboxError('');setInboxResult('');
-      if(!todaySchedule){setInboxError('오늘일정 뒤에 일정 내용을 입력해 주세요. 예: 오늘일정 9시 미용실');GPA.search?.refreshButtonMode();return;}
-      const saved={id:GPA.uid(),...todaySchedule,scheduleOnly:true,done:false,createdAt:new Date().toISOString()};
-      s.assistant.unshift(saved);input.value='';GPA.persist('today-schedule-command');
-      setInboxResult(`✓ 오늘 일정 저장 · ${saved.dueTime?`${saved.dueTime} · `:''}${saved.title}`);GPA.search?.refreshButtonMode();return;
+      if(!localCommand.item){setInboxError(`${localCommand.command} 뒤에 내용을 입력해 주세요.`);GPA.search?.refreshButtonMode();return;}
+      const saved={id:GPA.uid(),...localCommand.item,done:false,createdAt:new Date().toISOString()};
+      s.assistant.unshift(saved);input.value='';GPA.persist(`local-command-${localCommand.command}`);
+      const kind=saved.scheduleOnly?'일정':saved.type==='memo'?'메모':'할 일';
+      setInboxResult(`✓ ${kind} 저장 · ${saved.dueDate?`${saved.dueDate} · `:''}${saved.dueTime?`${saved.dueTime} · `:''}${saved.title}`);GPA.search?.refreshButtonMode();return;
     }
     const btn=$('analyzeInbox');btn.disabled=true;btn.textContent='GPT 정리 중...';setInboxError('');setInboxResult('');const started=performance.now();
     try{
