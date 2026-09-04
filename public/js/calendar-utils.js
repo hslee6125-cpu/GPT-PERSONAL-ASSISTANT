@@ -24,6 +24,7 @@
     return out.sort(entrySort);
   }
   function entriesForDate(entries,date){return (Array.isArray(entries)?entries:[]).filter(x=>x?.date===date).sort(entrySort);}
+  function buildDayPreview(entries,date,limit=3){const items=entriesForDate(entries,date);const count=Math.max(0,Number(limit)||0);return{visible:items.slice(0,count),overflow:Math.max(0,items.length-count)};}
   function buildCalendarSummaries({assistant=[],cooking=[],today}={}){
     if(!parseDate(today))throw new Error('오늘 날짜 형식이 올바르지 않습니다.');
     const entries=buildCalendarEntries({assistant,cooking}).filter(x=>x.date>today);
@@ -33,5 +34,5 @@
       projects:entries.filter(x=>x.kind==='cooking'||Boolean(x.projectTitle)).slice(0,6)
     };
   }
-  return{monthKey,shiftMonth,buildMonthGrid,buildCalendarEntries,entriesForDate,buildCalendarSummaries};
+  return{monthKey,shiftMonth,buildMonthGrid,buildCalendarEntries,entriesForDate,buildDayPreview,buildCalendarSummaries};
 });
