@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v5.1.2</title>
+<title>GPT Personal Assistant v5.1.3</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -25,7 +25,7 @@
   <div><h1 id="appTitle">GPT Personal Assistant</h1></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v5.1.2</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v5.1.3</div>
 <div id="storageBadge" class="update-connected storage-status">OneDrive 저장 상태 확인 중...</div>
 <div class="card pad unified-inbox">
   <div class="unified-inbox-head">
@@ -200,15 +200,38 @@
       <details id="commandReference" class="command-reference">
         <summary>명령어 도움말</summary>
         <div class="command-reference-body">
-          <div class="command-reference-row"><code>/search 검색어</code><span>전체 데이터에서 검색</span><small>예: /search 일본</small></div>
-          <div class="command-reference-row"><code>/s 검색어</code><span>/search 축약형</span><small>예: /s 미용실</small></div>
-          <div class="command-reference-row"><code>오늘일정 ...</code><span>오늘 일정으로 즉시 저장</span><small>예: 오늘일정 오후 4시 미용실</small></div>
-          <div class="command-reference-row"><code>내일일정 ...</code><span>내일 일정으로 즉시 저장</span><small>예: 내일일정 오전 11시 병원</small></div>
-          <div class="command-reference-row"><code>오늘할일 ...</code><span>오늘 할 일로 즉시 저장</span><small>예: 오늘할일 보험사 전화</small></div>
-          <div class="command-reference-row"><code>내일할일 ...</code><span>내일 할 일로 즉시 저장</span><small>예: 내일할일 서류 출력</small></div>
-          <div class="command-reference-row"><code>메모 ...</code><span>메모로 즉시 저장</span><small>예: 메모 민어 레시피 다시 테스트</small></div>
+          <div class="command-search-wrap"><input id="commandSearch" class="command-search" type="search" placeholder="명령어 검색" autocomplete="off"></div>
+          <div class="command-reference-row" data-command="/search 검색어 전체 데이터 검색"><code>/search 검색어</code><span>전체 데이터에서 검색</span><small>예: /search 일본</small><button type="button" class="command-copy" data-copy="/search ">복사</button></div>
+          <div class="command-reference-row" data-command="/s 검색어 검색 축약형"><code>/s 검색어</code><span>/search 축약형</span><small>예: /s 미용실</small><button type="button" class="command-copy" data-copy="/s ">복사</button></div>
+          <div class="command-reference-row" data-command="오늘일정 오늘 일정"><code>오늘일정 ...</code><span>오늘 일정으로 즉시 저장</span><small>예: 오늘일정 오후 4시 미용실</small><button type="button" class="command-copy" data-copy="오늘일정 ">복사</button></div>
+          <div class="command-reference-row" data-command="내일일정 내일 일정"><code>내일일정 ...</code><span>내일 일정으로 즉시 저장</span><small>예: 내일일정 오전 11시 병원</small><button type="button" class="command-copy" data-copy="내일일정 ">복사</button></div>
+          <div class="command-reference-row" data-command="오늘할일 오늘 할 일"><code>오늘할일 ...</code><span>오늘 할 일로 즉시 저장</span><small>예: 오늘할일 보험사 전화</small><button type="button" class="command-copy" data-copy="오늘할일 ">복사</button></div>
+          <div class="command-reference-row" data-command="내일할일 내일 할 일"><code>내일할일 ...</code><span>내일 할 일로 즉시 저장</span><small>예: 내일할일 서류 출력</small><button type="button" class="command-copy" data-copy="내일할일 ">복사</button></div>
+          <div class="command-reference-row" data-command="메모 즉시 저장"><code>메모 ...</code><span>메모로 즉시 저장</span><small>예: 메모 민어 레시피 다시 테스트</small><button type="button" class="command-copy" data-copy="메모 ">복사</button></div>
+          <div id="commandSearchEmpty" class="command-search-empty" hidden>일치하는 명령어가 없습니다.</div>
         </div>
       </details>
+      <div class="settings-info-grid">
+        <section class="settings-info-card">
+          <div class="settings-info-title">앱 정보</div>
+          <div class="settings-info-row"><span>현재 버전</span><b id="settingsAppVersion">확인 중</b></div>
+          <div class="settings-info-row"><span>로컬 서버</span><b id="settingsServerAddress">확인 중</b></div>
+          <div class="settings-info-row"><span>데이터 스키마</span><b id="settingsSchemaVersion">확인 중</b></div>
+        </section>
+        <section class="settings-info-card">
+          <div class="settings-info-title">OpenAI</div>
+          <div class="settings-info-row"><span>연결 상태</span><b id="settingsOpenAIStatus">확인 중</b></div>
+          <div class="settings-info-row"><span>사용 모델</span><b id="settingsOpenAIModel">확인 중</b></div>
+          <div class="settings-info-note">API 키 값은 이 화면에 표시하지 않습니다.</div>
+        </section>
+        <section class="settings-info-card settings-info-wide">
+          <div class="settings-info-title">데이터 및 동기화</div>
+          <div class="settings-info-row"><span>브라우저 비상 저장</span><b id="settingsBrowserStorage">사용 중</b></div>
+          <div class="settings-info-row"><span>OneDrive</span><b id="settingsOneDriveStatus">확인 중</b></div>
+          <div class="settings-info-row settings-info-path-row"><span>저장 위치</span><b id="settingsOneDrivePath">확인 중</b></div>
+          <div class="settings-info-note">앱 데이터는 OneDrive JSON을 기본 저장소로 사용하고, 브라우저에는 비상 사본을 함께 유지합니다.</div>
+        </section>
+      </div>
   </div>
 </section>
 </main>
@@ -230,6 +253,7 @@
 <script src="/js/cooking.js"></script>
 <script src="/js/dashboard.js"></script>
 <script src="/js/system-settings.js"></script>
+<script src="/js/settings-info.js"></script>
 <script src="/js/navigation.js"></script>
 <script src="/js/calendar.js"></script>
 <script src="/js/main.js"></script>
