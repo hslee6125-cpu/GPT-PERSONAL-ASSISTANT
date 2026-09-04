@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v4.6.6</title>
+<title>GPT Personal Assistant v4.7.0</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
   <div><h1>GPT Personal Assistant v4</h1><div class="sub">개인 비서 + 요리 프로젝트/레시피 + Word 원본 보관 + OneDrive 동기화</div></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.6.6</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v4.7.0</div>
 <div id="storageBadge" class="update-connected storage-status">OneDrive 저장 상태 확인 중...</div>
 <div class="card pad unified-inbox">
   <div class="unified-inbox-head">
@@ -34,15 +34,22 @@
   <button class="tab" data-view="cooking">요리 프로젝트</button>
 </div>
 <section id="assistant" class="view active">
-  <div class="card pad">
+  <div class="card pad assistant-overview-card">
     <div class="kpis assistant-filter-tabs" role="tablist" aria-label="개인 비서 항목 필터">
       <button type="button" data-assistant-filter="todo" class="kpi assistant-filter-tab active" role="tab" aria-selected="true"><b id="todoKpi">0</b><span>할 일</span></button>
       <button type="button" data-assistant-filter="memo" class="kpi assistant-filter-tab" role="tab" aria-selected="false"><b id="memoKpi">0</b><span>메모</span></button>
       <button type="button" data-assistant-filter="project" class="kpi assistant-filter-tab" role="tab" aria-selected="false"><b id="projKpi">0</b><span>장기 프로젝트</span></button>
       <button type="button" data-assistant-filter="done" class="kpi assistant-filter-tab" role="tab" aria-selected="false"><b id="doneKpi">0</b><span>완료</span></button>
     </div>
-    <div id="assistantList" class="list"></div>
+    <div id="assistantProjectHub" class="assistant-project-hub"></div>
   </div>
+  <details id="assistantItemsPanel" class="card assistant-items-card">
+    <summary class="assistant-items-summary"><span>전체 항목 보기</span><small>상단 분류 박스를 눌러 해당 목록만 펼쳐보세요.</small></summary>
+    <div class="assistant-items-body">
+      <div class="notice" style="margin-top:0">수정, 완료, 삭제 같은 세부 작업은 이곳에서 계속 할 수 있습니다.</div>
+      <div id="assistantList" class="list"></div>
+    </div>
+  </details>
   <details class="card system-settings-card">
     <summary class="system-settings-summary"><span>⚙ 실행 설정</span><small>필요할 때만 펼쳐서 변경</small></summary>
     <div class="system-settings-body">
