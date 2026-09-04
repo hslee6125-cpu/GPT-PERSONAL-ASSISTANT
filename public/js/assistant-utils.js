@@ -45,6 +45,13 @@
     if (counts.project) labels.push(`프로젝트 ${counts.project}`);
     return { total:source.length, counts, text:labels.join(' · ') };
   }
+  function filterAssistantItems(items, filter='todo') {
+    const source = Array.isArray(items) ? items : [];
+    if (filter === 'done') return source.filter(item => Boolean(item?.done));
+    const safeFilter = TYPES.has(filter) ? filter : 'todo';
+    return source.filter(item => item?.type === safeFilter && !item?.done);
+  }
+
   function updateAssistantItem(items, id, patch) {
     const source = Array.isArray(items) ? items : [];
     const target = source.find(item => item?.id === id);
@@ -62,5 +69,5 @@
     return source.map(item => item?.id === id ? { ...item, ...nextPatch } : item);
   }
 
-  return { normalizeInboxItem, summarizeInboxItems, updateAssistantItem };
+  return { normalizeInboxItem, summarizeInboxItems, filterAssistantItems, updateAssistantItem };
 });
