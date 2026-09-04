@@ -97,6 +97,7 @@
     const active = source.filter(item => !item?.deletedAt);
     if (filter === 'done') return active.filter(item => Boolean(item?.done) && !isSpecialRecord(item));
     if (filter === 'memo') return active.filter(item => item?.type === 'memo' && !item?.done && !item?.activityOnly);
+    if (filter === 'schedule') return active.filter(item => item?.type === 'todo' && !item?.done && item?.scheduleOnly);
     if (filter === 'todo') return active.filter(item => item?.type === 'todo' && !item?.done && !item?.scheduleOnly);
     if (filter === 'project') return active.filter(item => item?.type === 'project' && !item?.done);
     return active.filter(item => item?.type === 'todo' && !item?.done && !item?.scheduleOnly);
