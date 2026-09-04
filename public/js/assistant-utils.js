@@ -69,5 +69,118 @@
     return source.map(item => item?.id === id ? { ...item, ...nextPatch } : item);
   }
 
-  return { normalizeInboxItem, summarizeInboxItems, filterAssistantItems, updateAssistantItem };
+  function parseDateMs(value) {
+    const date = normalizeDueDate(value);
+    if (!date) return Number.POSITIVE_INFINITY;
+    return Date.parse(`${date}T00:00:00Z`);
+  }
+  function parseTimeMs(value) {
+    const ms = Date.parse(String(value ?? '').trim());
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  function projectSortKey(project) {
+    return `${project.done ? '1' : '0'}-${String(project.nextDue || '9999-99-99')}-${project.title}`;
+  }
+  function sortTodos(items) {
+    return [...items].sort((a,b)=>{
+      if (Boolean(a.done) !== Boolean(b.done)) return Number(a.done) - Number(b.done);
+      const dueDiff = parseDateMs(a.dueDate) - parseDateMs(b.dueDate);
+      if (Number.isFinite(dueDiff) && dueDiff !== 0) return dueDiff;
+      return String(a.title||'').localeCompare(String(b.title||''), 'ko');
+    });
+  }
+  function sortSchedules(items) {
+    return [...items].sort((a,b)=>{
+      const diff = parseDateMs(a.dueDate) - parseDateMs(b.dueDate);
+      if (Number.isFinite(diff) && diff !== 0) return diff;
+      return String(a.title||'').localeCompare(String(b.title||''), 'ko');
+    });
+  }
+  function sortRecent(items) {
+    return [...items].sort((a,b)=>{
+      const diff = parseTimeMs(b.createdAt) - parseTimeMs(a.createdAt);
+      if (diff !== 0) return diff;
+      return String(b.dueDate||'').localeCompare(String(a.dueDate||''), 'ko');
+    });
+  }
+  function ensureProjectRecord(map, title) {
+    const name = String(title ?? '').trim();
+    if (!name) return null;
+    if (!map.has(name)) map.set(name, { key:name, title:name, projectItem:null, linked:[] });
+    return map.get(name);
+  }
+  function collectAssistantProjects(items) {
+    const source = Array.isArray(items) ? items : [];
+    const map = new Map();
+    for (const item of source) {
+      if (!item || typeof item !== 'object') continue;
+      const title = String(item.title ?? '').trim();
+      if (item.type === 'project' && title) {
+        const entry = ensureProjectRecord(map, title);
+        if (entry && !entry.projectItem) entry.projectItem = item;
+      }
+      const linkedName = String(item.projectTitle ?? '').trim();
+      if (linkedName) {
+        const entry = ensureProjectRecord(map, linkedName);
+        if (entry) entry.linked.push(item);
+      }
+    }
+    return [...map.values()].map(entry => {
+      const projectItem = entry.projectItem;
+      const linked = entry.linked.filter(Boolean);
+      const todos = sortTodos(linked.filter(item => item.type === 'todo'));
+      const memos = sortRecent(linked.filter(item => item.type === 'memo'));
+      const scheduleItems = sortSchedules([projectItem, ...linked].filter(item => item && item.dueDate && !item.done));
+      const doneTodos = todos.filter(item => item.done).length;
+      const totalTodos = todos.length;
+      const progress = totalTodos ? Math.round((doneTodos / totalTodos) * 100) : (projectItem?.done ? 100 : 0);
+      const recent = sortRecent([projectItem, ...linked].filter(Boolean)).slice(0, 5);
+      return {
+        key: entry.key,
+        title: projectItem?.title || entry.title,
+        projectItem,
+        isVirtual: !projectItem,
+        description: String(projectItem?.details ?? '').trim(),
+        done: Boolean(projectItem?.done),
+        todos,
+        memos,
+        schedules: scheduleItems,
+        recent,
+        nextDue: scheduleItems[0]?.dueDate || null,
+        progress,
+        doneTodos,
+        totalTodos,
+        stats: {
+          todos: todos.filter(item => !item.done).length,
+          memos: memos.length,
+          schedules: scheduleItems.length
+        }
+      };
+    }).sort((a,b)=>projectSortKey(a).localeCompare(projectSortKey(b), 'ko'));
+  }
+  function formatActivityLabel(item) {
+    if (!item) return '';
+    if (item.type === 'project') return item.done ? '프로젝트 완료' : '프로젝트 생성';
+    if (item.type === 'todo') return item.done ? '할 일 완료' : '할 일 추가';
+    return '메모 추가';
+  }
+  function buildProjectSuggestions(project) {
+    if (!project) return [];
+    const suggestions = [];
+    if (project.isVirtual) suggestions.push('이 프로젝트는 연결된 항목만 있습니다. 장기 프로젝트 설명을 추가해 보세요.');
+    if (!project.totalTodos) suggestions.push('이 프로젝트에 다음 행동을 하나 추가해보세요.');
+    if (project.nextDue) suggestions.push(`다가오는 일정(${project.nextDue}) 전에 할 일을 점검해보세요.`);
+    if (project.totalTodos && project.doneTodos < project.totalTodos) suggestions.push(`남은 할 일 ${project.totalTodos-project.doneTodos}개를 이번 주 목표로 잡아볼까요?`);
+    return suggestions.slice(0, 3);
+  }
+
+  return {
+    normalizeInboxItem,
+    summarizeInboxItems,
+    filterAssistantItems,
+    updateAssistantItem,
+    collectAssistantProjects,
+    formatActivityLabel,
+    buildProjectSuggestions
+  };
 });
