@@ -1,5 +1,5 @@
 {
-  "version": "4.8.0",
+  "version": "4.8.1",
   "runNpmInstall": false,
   "files": [
     {
@@ -61,6 +61,14 @@
     {
       "path": "public/js/storage.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/storage.js"
+    },
+    {
+      "path": "public/js/search-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/search-utils.js"
+    },
+    {
+      "path": "public/js/search.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/search.js"
     },
     {
       "path": "public/js/assistant.js",
