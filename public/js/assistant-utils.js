@@ -153,6 +153,17 @@
     if ('priority' in nextPatch && !PRIORITIES.has(nextPatch.priority)) throw new Error('올바른 중요도를 선택해 주세요.');
     if ('dueDate' in nextPatch) nextPatch.dueDate = normalizeDueDate(nextPatch.dueDate);
     if ('dueTime' in nextPatch) nextPatch.dueTime = normalizeDueTime(nextPatch.dueTime);
+    if ('endTime' in nextPatch) nextPatch.endTime = normalizeDueTime(nextPatch.endTime);
+    if ('allDay' in nextPatch) nextPatch.allDay = Boolean(nextPatch.allDay);
+    if (target.scheduleOnly) {
+      const allDay = 'allDay' in nextPatch ? nextPatch.allDay : Boolean(target.allDay);
+      if (allDay) { nextPatch.dueTime = null; nextPatch.endTime = null; }
+      else {
+        const start = 'dueTime' in nextPatch ? nextPatch.dueTime : normalizeDueTime(target.dueTime);
+        const end = 'endTime' in nextPatch ? nextPatch.endTime : normalizeDueTime(target.endTime);
+        if (start && end && end <= start) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
+      }
+    }
     if ('projectTitle' in nextPatch) nextPatch.projectTitle = normalizeOptional(nextPatch.projectTitle);
     return source.map(item => item?.id === id ? { ...item, ...nextPatch } : item);
   }
@@ -205,6 +216,8 @@
       priority: PRIORITIES.has(values.priority) ? values.priority : 'medium',
       dueDate: normalizeDueDate(values.dueDate),
       dueTime: normalizeDueTime(values.dueTime),
+      endTime: normalizeDueTime(values.endTime),
+      allDay: Boolean(values.allDay),
       tags: normalizeTags(values.tags),
       projectTitle: project,
       done: Boolean(values.done),
@@ -214,6 +227,8 @@
     if (kind === 'memo') return { ...common, type:'memo', dueDate:null };
     if (kind === 'schedule') {
       if (!common.dueDate) throw new Error('일정 날짜를 입력해 주세요.');
+      if (common.allDay) { common.dueTime=null; common.endTime=null; }
+      else if (common.dueTime && common.endTime && common.endTime <= common.dueTime) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
       return { ...common, type:'todo', scheduleOnly:true };
     }
     if (kind === 'activity') return { ...common, type:'memo', dueDate:null, activityOnly:true };
@@ -232,6 +247,13 @@
       if (target.scheduleOnly && !next.dueDate) throw new Error('일정 날짜를 입력해 주세요.');
     }
     if ('dueTime' in next) next.dueTime = normalizeDueTime(next.dueTime);
+    if ('endTime' in next) next.endTime = normalizeDueTime(next.endTime);
+    if ('allDay' in next) next.allDay = Boolean(next.allDay);
+    if (target.scheduleOnly) {
+      const allDay='allDay' in next?next.allDay:Boolean(target.allDay);
+      if(allDay){next.dueTime=null;next.endTime=null;}
+      else {const start='dueTime' in next?next.dueTime:normalizeDueTime(target.dueTime);const end='endTime' in next?next.endTime:normalizeDueTime(target.endTime);if(start&&end&&end<=start)throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');}
+    }
     delete next.projectTitle;
     delete next.activityOnly;
     delete next.scheduleOnly;
