@@ -25,12 +25,13 @@ const handler=createRequestHandler({port:PORT,publicDir:PUBLIC_DIR,version:APP_V
 const server=http.createServer(handler);
 let restartRequested=false;
 const updateWatcher=createUpdateWatcher({
-  root:__dirname,systemSettings,updater,
+  root:__dirname,systemSettings,updater,runtimeVersion:APP_VERSION,processId:process.pid,
   onRestartRequested:()=>{
     if(restartRequested)return;restartRequested=true;
     console.log('[Update Watcher] 새 버전 적용 완료 · 서버 재시작');
     server.close(()=>process.exit(0));
-    const force=setTimeout(()=>process.exit(0),5000);if(force.unref)force.unref();
+    if(typeof server.closeIdleConnections==='function')server.closeIdleConnections();
+    const force=setTimeout(()=>{if(typeof server.closeAllConnections==='function')server.closeAllConnections();process.exit(0);},3000);if(force.unref)force.unref();
   }
 });
 
