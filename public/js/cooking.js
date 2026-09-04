@@ -39,5 +39,5 @@
     $('projectEditor').addEventListener('click',e=>{const library=e.target.closest('[data-project-open-library]');if(library)return showMode('library');const open=e.target.closest('[data-recipe-open-library]');if(open)return GPA.recipes.openRecipe(open.dataset.recipeOpenLibrary);const move=e.target.closest('[data-recipe-move]');if(move)return moveRecipe(move.dataset.projectId,move.dataset.recipeId,Number(move.dataset.recipeMove));const rm=e.target.closest('[data-cooking-remove]');if(rm)return unlinkRecipe(rm.dataset.cookingRemove,rm.dataset.recipeId);});
     $('projectEditor').addEventListener('change',e=>{const el=e.target.closest('[data-target-project]');if(el)setTarget(el.dataset.targetProject,el.dataset.targetRecipe,el.value);});
   }
-  GPA.cooking={render:renderProjects,renderEditor,bind,showMode};
+  GPA.cooking={render:renderProjects,renderEditor,bind,showMode,openProject};
 })(window);
