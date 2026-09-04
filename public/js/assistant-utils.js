@@ -27,14 +27,19 @@
     return [...new Set(tags.map(tag => String(tag ?? '').trim()).filter(Boolean))];
   }
 
-  function parseTodayScheduleCommand(value, today) {
-    const text = String(value ?? '').trim();
-    if (!text.startsWith('오늘일정')) return null;
-    const dueDate = normalizeDueDate(today);
-    if (!dueDate) return null;
-    let body = text.slice('오늘일정'.length).trim();
+  function addDays(dateString, amount) {
+    const date = normalizeDueDate(dateString);
+    if (!date) return null;
+    const [year, month, day] = date.split('-').map(Number);
+    const next = new Date(Date.UTC(year, month - 1, day + Number(amount || 0)));
+    return `${next.getUTCFullYear()}-${String(next.getUTCMonth()+1).padStart(2,'0')}-${String(next.getUTCDate()).padStart(2,'0')}`;
+  }
+  function stripTrailingSaveVerb(value) {
+    return String(value ?? '').replace(/\s*(?:추가해(?:줘)?|추가|등록해(?:줘)?|등록|저장해(?:줘)?|저장)\s*[.!?]?$/,'').trim();
+  }
+  function parseScheduleBody(value) {
+    let body = String(value ?? '').trim();
     if (!body) return null;
-
     let dueTime = null;
     const patterns = [
       /(?:^|\s)(오전|오후)?\s*(\d{1,2}):(\d{2})(?=\s|$)/,
@@ -55,13 +60,44 @@
       body = `${body.slice(0, match.index)} ${body.slice(match.index + match[0].length)}`.replace(/\s+/g,' ').trim();
       break;
     }
-
-    body = body.replace(/\s*(?:추가해(?:줘)?|추가|등록해(?:줘)?|등록)\s*[.!?]?$/,'').trim();
-    if (!body) return null;
-    return {
-      type:'todo', title:body, details:'', priority:'medium', dueDate, dueTime,
-      tags:[], projectTitle:null, scheduleOnly:true
-    };
+    body = stripTrailingSaveVerb(body);
+    return body ? {title:body,dueTime} : null;
+  }
+  function parseLocalInboxCommand(value, today) {
+    const text = String(value ?? '').trim();
+    const dueToday = normalizeDueDate(today);
+    if (!text || !dueToday) return null;
+    const definitions = [
+      {command:'오늘일정',kind:'schedule',offset:0},
+      {command:'내일일정',kind:'schedule',offset:1},
+      {command:'오늘할일',kind:'todo',offset:0},
+      {command:'내일할일',kind:'todo',offset:1},
+      {command:'메모',kind:'memo',offset:null}
+    ];
+    const def = definitions.find(entry=>text===entry.command||text.startsWith(`${entry.command} `));
+    if (!def) return null;
+    let body = text.slice(def.command.length).trim();
+    if (!body) return {command:def.command,item:null};
+    if (def.kind === 'schedule') {
+      const parsed = parseScheduleBody(body);
+      if (!parsed) return {command:def.command,item:null};
+      return {command:def.command,item:{
+        type:'todo',title:parsed.title,details:'',priority:'medium',dueDate:addDays(dueToday,def.offset),dueTime:parsed.dueTime,
+        tags:[],projectTitle:null,scheduleOnly:true
+      }};
+    }
+    body = stripTrailingSaveVerb(body);
+    if (!body) return {command:def.command,item:null};
+    if (def.kind === 'memo') return {command:def.command,item:{
+      type:'memo',title:body,details:'',priority:'medium',dueDate:null,dueTime:null,tags:[],projectTitle:null
+    }};
+    return {command:def.command,item:{
+      type:'todo',title:body,details:'',priority:'medium',dueDate:addDays(dueToday,def.offset),dueTime:null,tags:[],projectTitle:null
+    }};
+  }
+  function parseTodayScheduleCommand(value, today) {
+    const parsed = parseLocalInboxCommand(value,today);
+    return parsed?.command==='오늘일정' ? parsed.item : null;
   }
 
   function normalizeInboxItem(item) {
@@ -319,6 +355,7 @@
   return {
     normalizeInboxItem,
     parseTodayScheduleCommand,
+    parseLocalInboxCommand,
     summarizeInboxItems,
     filterAssistantItems,
     updateAssistantItem,
