@@ -4,6 +4,7 @@
   const priorityLabels={high:'높음',medium:'보통',low:'낮음'};
   const filterLabels={todo:'할 일',memo:'메모',project:'장기 프로젝트',done:'완료',trash:'휴지통'};
   let activeFilter='todo';
+  let activeTodoMode='todo';
   let activeProjectKey='';
   let projectEditor={kind:null,id:null};
 
@@ -59,7 +60,8 @@
   }
   function viewCard(x){
     const tags=(Array.isArray(x.tags)?x.tags:[]).map(tag=>`<span class="chip tag-chip">#${esc(tag)}</span>`).join('');
-    return `<div class="item" data-assistant-item-id="${x.id}" style="${x.done?'opacity:.55':''}"><div class="itemrow"><div class="assistant-content"><div class="title">${esc(x.title)}</div><div class="details">${esc(x.details||'')}</div><div class="meta"><span class="chip">${esc(typeLabels[x.type]||x.type)}</span><span class="chip ${esc(x.priority||'medium')}">${esc(priorityLabels[x.priority||'medium']||x.priority)}</span>${x.dueDate?`<span class="chip">${esc(x.dueDate)}${x.dueTime?` · ${esc(x.dueTime)}`:''}</span>`:''}${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div></div><div class="actions"><button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost" data-assistant-action="toggle" data-id="${x.id}">${x.done?'되돌리기':'완료'}</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button></div></div></div>`;
+    const kindLabel=x.scheduleOnly?'일정':(typeLabels[x.type]||x.type);
+    return `<div class="item" data-assistant-item-id="${x.id}" style="${x.done?'opacity:.55':''}"><div class="itemrow"><div class="assistant-content"><div class="title">${esc(x.title)}</div><div class="details">${esc(x.details||'')}</div><div class="meta"><span class="chip">${esc(kindLabel)}</span><span class="chip ${esc(x.priority||'medium')}">${esc(priorityLabels[x.priority||'medium']||x.priority)}</span>${x.dueDate?`<span class="chip">${esc(x.dueDate)}${x.dueTime?` · ${esc(x.dueTime)}`:''}</span>`:''}${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div></div><div class="actions"><button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost" data-assistant-action="toggle" data-id="${x.id}">${x.done?'되돌리기':'완료'}</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button></div></div></div>`;
   }
   function memoBoardCard(x){
     const tags=(Array.isArray(x.tags)?x.tags:[]).map(tag=>`<span class="chip">#${esc(tag)}</span>`).join('');
@@ -69,7 +71,8 @@
   function trashTypeLabel(x){if(x.activityOnly)return '활동';if(x.scheduleOnly)return '일정';return typeLabels[x.type]||'항목';}
   function trashCard(x){return `<div class="item trash-item"><div class="itemrow"><div class="assistant-content"><div class="title">${esc(x.title)}</div><div class="meta"><span class="chip">${esc(trashTypeLabel(x))}</span>${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${x.deletedAt?`<span class="chip">삭제 ${esc(String(x.deletedAt).slice(0,16).replace('T',' '))}</span>`:''}</div></div><div class="actions"><button class="small ghost" data-assistant-action="restore" data-id="${x.id}">복구</button><button class="small ghost danger" data-assistant-action="permanent-delete" data-id="${x.id}">영구 삭제</button></div></div></div>`;}
 
-  function setActiveFilter(filter){if(!['todo','memo','project','done','trash'].includes(filter))return;activeFilter=filter;s.editingAssistantId=null;projectEditor={kind:null,id:null};render();}
+  function setActiveFilter(filter,{preserveTodoMode=false}={}){if(!['todo','memo','project','done','trash'].includes(filter))return;if(filter==='todo'&&!preserveTodoMode)activeTodoMode='todo';activeFilter=filter;s.editingAssistantId=null;projectEditor={kind:null,id:null};render();}
+  function setTodoMode(mode){if(!['todo','schedule'].includes(mode))return;activeTodoMode=mode;s.editingAssistantId=null;projectEditor={kind:null,id:null};render();}
   function projectProgressTone(progress){if(progress>=70)return'good';if(progress>=35)return'mid';return'light';}
   function getProjects(){return AssistantUtils.collectAssistantProjects(s.assistant).filter(project=>!project.done);}
   function ensureActiveProject(projects){if(!projects.length){activeProjectKey='';return null;}const found=projects.find(project=>project.key===activeProjectKey||project.title===activeProjectKey);if(found){activeProjectKey=found.key;return found;}activeProjectKey=projects[0].key;return projects[0];}
@@ -126,10 +129,12 @@
   function renderTrash(items){const controls=items.length?`<div class="trash-toolbar"><div><b>휴지통</b><span>${items.length}개 항목</span></div><button type="button" class="small ghost danger" data-assistant-action="empty-trash">휴지통 비우기</button></div>`:'';$('assistantList').innerHTML=controls+(items.length?items.map(trashCard).join(''):'<div class="empty">휴지통이 비어 있습니다.</div>');}
   function render(){
     const projects=getProjects();$('todoKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'todo').length;$('memoKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'memo').length;$('projKpi').textContent=projects.length;$('doneKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'done').length;$('trashKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'trash').length;
-    document.querySelectorAll('[data-assistant-filter]').forEach(tab=>{const selected=tab.dataset.assistantFilter===activeFilter;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});const projectMode=activeFilter === 'project';$('assistantListPanel')?.classList.toggle('active',!projectMode);$('assistantProjectHub')?.classList.toggle('active',projectMode);if(projectMode){renderProjectHub(projects);return;}const visible=AssistantUtils.filterAssistantItems(s.assistant,activeFilter);const list=$('assistantList');list.classList.toggle('memo-board',activeFilter==='memo');if(activeFilter==='trash'){renderTrash(visible);return;}list.innerHTML=visible.length?visible.map(x=>s.editingAssistantId===x.id?editCard(x):(activeFilter==='memo'?memoBoardCard(x):viewCard(x))).join(''):`<div class="empty">${esc(filterLabels[activeFilter])} 항목이 없습니다.</div>`;
+    document.querySelectorAll('[data-assistant-filter]').forEach(tab=>{const selected=tab.dataset.assistantFilter===activeFilter;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});const projectMode=activeFilter === 'project';$('assistantListPanel')?.classList.toggle('active',!projectMode);$('assistantProjectHub')?.classList.toggle('active',projectMode);if(projectMode){renderProjectHub(projects);return;}
+    const todoModeTabs=$('assistantTodoModeTabs');if(todoModeTabs){todoModeTabs.hidden=activeFilter!=='todo';todoModeTabs.querySelectorAll('[data-assistant-item-mode]').forEach(tab=>{const selected=tab.dataset.assistantItemMode===activeTodoMode;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});}
+    const visible=activeFilter==='todo'?AssistantUtils.filterAssistantItems(s.assistant,activeTodoMode):AssistantUtils.filterAssistantItems(s.assistant,activeFilter);const list=$('assistantList');list.classList.toggle('memo-board',activeFilter==='memo');if(activeFilter==='trash'){renderTrash(visible);return;}const emptyLabel=activeFilter==='todo'&&activeTodoMode==='schedule'?'일정':filterLabels[activeFilter];list.innerHTML=visible.length?visible.map(x=>s.editingAssistantId===x.id?editCard(x):(activeFilter==='memo'?memoBoardCard(x):viewCard(x))).join(''):`<div class="empty">${esc(emptyLabel)} 항목이 없습니다.</div>`;
   }
   function bind(){
-    $('analyzeInbox').addEventListener('click',analyzeInbox);$('inboxText').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyzeInbox();}});document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter);});
+    $('analyzeInbox').addEventListener('click',analyzeInbox);$('inboxText').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyzeInbox();}});document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter);});$('assistantTodoModeTabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-item-mode]');if(tab)setTodoMode(tab.dataset.assistantItemMode);});
     $('assistantList').addEventListener('click',e=>{const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':startEdit(id);break;case'toggle':toggle(id);break;case'delete':softDelete(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;case'restore':restore(id);break;case'permanent-delete':permanentDelete(id);break;case'empty-trash':emptyTrash();break;}});
     $('assistantProjectHub').addEventListener('click',e=>{
       const projectButton=e.target.closest('[data-project-key]');if(projectButton){activeProjectKey=projectButton.dataset.projectKey;projectEditor={kind:null,id:null};render();return;}
@@ -146,13 +151,14 @@
       if(e.target.id==='createAssistantProject'){createProject();}
     });
   }
-  function openFilter(filter){setActiveFilter(filter);}
+  function openFilter(filter){if(filter==='schedule'){activeTodoMode='schedule';setActiveFilter('todo',{preserveTodoMode:true});return;}setActiveFilter(filter);}
   function openProject(key){activeProjectKey=String(key||'');setActiveFilter('project');}
   function scrollToAssistantItem(id){requestAnimationFrame(()=>{const target=[...document.querySelectorAll('[data-assistant-item-id]')].find(el=>el.dataset.assistantItemId===String(id));target?.scrollIntoView({behavior:'smooth',block:'center'});});}
   function openItem(id){
     const item=s.assistant.find(x=>x.id===id&&!x.deletedAt);if(!item)return false;
     GPA.showView?.('assistant');
-    if((item.scheduleOnly||item.activityOnly)&&item.projectTitle){activeProjectKey=item.projectTitle;setActiveFilter('project');}
+    if(item.scheduleOnly){activeTodoMode='schedule';setActiveFilter('todo',{preserveTodoMode:true});}
+    else if(item.activityOnly&&item.projectTitle){activeProjectKey=item.projectTitle;setActiveFilter('project');}
     else if(item.done)setActiveFilter('done');
     else if(item.type==='project'){activeProjectKey=item.title;setActiveFilter('project');}
     else setActiveFilter(item.type==='memo'?'memo':'todo');
