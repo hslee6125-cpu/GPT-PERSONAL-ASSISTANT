@@ -121,6 +121,11 @@
     return source.map(item => item?.id === id ? { ...item, ...nextPatch } : item);
   }
 
+  function toggleAssistantItem(items, id) {
+    const source = Array.isArray(items) ? items : [];
+    return source.map(item => item?.id === id && !item?.deletedAt ? { ...item, done: !Boolean(item.done) } : item);
+  }
+
   function softDeleteAssistantItem(items, id, deletedAt=new Date().toISOString()) {
     const source = Array.isArray(items) ? items : [];
     return source.map(item => item?.id === id && !item?.deletedAt ? {
@@ -317,6 +322,7 @@
     summarizeInboxItems,
     filterAssistantItems,
     updateAssistantItem,
+    toggleAssistantItem,
     softDeleteAssistantItem,
     restoreAssistantItem,
     permanentlyDeleteAssistantItem,
