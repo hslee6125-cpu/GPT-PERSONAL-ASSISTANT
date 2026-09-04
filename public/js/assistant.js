@@ -69,7 +69,7 @@
   function trashTypeLabel(x){if(x.activityOnly)return '활동';if(x.scheduleOnly)return '일정';return typeLabels[x.type]||'항목';}
   function trashCard(x){return `<div class="item trash-item"><div class="itemrow"><div class="assistant-content"><div class="title">${esc(x.title)}</div><div class="meta"><span class="chip">${esc(trashTypeLabel(x))}</span>${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${x.deletedAt?`<span class="chip">삭제 ${esc(String(x.deletedAt).slice(0,16).replace('T',' '))}</span>`:''}</div></div><div class="actions"><button class="small ghost" data-assistant-action="restore" data-id="${x.id}">복구</button><button class="small ghost danger" data-assistant-action="permanent-delete" data-id="${x.id}">영구 삭제</button></div></div></div>`;}
 
-  function setActiveFilter(filter,{preserveTodoMode=false}={}){if(!['todo','memo','project','done','trash'].includes(filter))return;if(filter==='todo'&&!preserveTodoMode)activeTodoMode='todo';activeFilter=filter;s.editingAssistantId=null;projectHub.resetEditor();render();}
+  function setActiveFilter(filter,{preserveTodoMode=false}={}){if(!['todo','memo','project','done','trash'].includes(filter))return;if(filter==='todo'&&!preserveTodoMode)activeTodoMode='todo';activeFilter=filter;s.editingAssistantId=null;projectHub.resetEditor();render();GPA.navigation?.renderActive();}
   function setTodoMode(mode){if(!['todo','schedule'].includes(mode))return;activeTodoMode=mode;s.editingAssistantId=null;projectHub.resetEditor();render();}
   function maybeOpenFilteredItems(filter){setActiveFilter(filter);document.querySelector('.assistant-overview-card')?.scrollIntoView({behavior:'smooth',block:'start'});}
   const projectHub=AssistantProjects.create({GPA,typeLabels,priorityLabels,renderAssistant:()=>render(),toggleItem:toggle,softDeleteItem:softDelete,openFilter:maybeOpenFilteredItems});
@@ -99,5 +99,5 @@
     else setActiveFilter(item.type==='memo'?'memo':'todo');
     scrollToAssistantItem(id);return true;
   }
-  GPA.assistant={render,bind,openFilter,openProject,openItem};
+  GPA.assistant={render,bind,openFilter,openProject,openItem,getActiveFilter:()=>activeFilter};
 })(window);
