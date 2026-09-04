@@ -29,6 +29,8 @@
     if(!title)throw new Error('제목을 입력해 주세요.');
     const dueDate=validDate(values.dueDate)?String(values.dueDate):null;
     const dueTime=normalizeTime(values.dueTime);
+    const endTime=normalizeTime(values.endTime);
+    const allDay=Boolean(values.allDay);
     const common={
       id:meta.id||`${Date.now()}-${Math.random()}`,
       title,
@@ -36,6 +38,8 @@
       priority:'medium',
       dueDate,
       dueTime,
+      endTime,
+      allDay,
       projectTitle:String(values.projectTitle||'').trim()||null,
       tags:[],
       done:false,
@@ -45,6 +49,8 @@
     if(kind==='memo')return {...common,type:'memo',dueDate:null,dueTime:null};
     if(kind==='schedule'){
       if(!dueDate)throw new Error('일정 날짜를 입력해 주세요.');
+      if(allDay)return {...common,dueTime:null,endTime:null,type:'todo',scheduleOnly:true};
+      if(dueTime&&endTime&&endTime<=dueTime)throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
       return {...common,type:'todo',scheduleOnly:true};
     }
     throw new Error('지원하지 않는 빠른 추가 항목입니다.');
