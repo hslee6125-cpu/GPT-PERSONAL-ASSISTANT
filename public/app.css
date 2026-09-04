@@ -163,3 +163,58 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 .system-settings-actions .notice{margin:0;font-size:11px}
 @media(max-width:760px){.system-setting-list{grid-template-columns:1fr}.system-settings-head{align-items:flex-start;flex-direction:column}}
 @media(max-width:650px){.system-settings-actions{align-items:stretch;flex-direction:column}.system-settings-actions button{width:100%}}
+
+/* v4.7.0 assistant project hub */
+.assistant-overview-card{margin-bottom:12px}
+.assistant-project-hub{margin-top:4px}
+.assistant-project-hub-layout{display:grid;grid-template-columns:minmax(270px,.84fr) minmax(0,1.46fr);gap:16px;align-items:start}
+.assistant-section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}.assistant-section-head.compact{align-items:center;margin-bottom:9px}.assistant-section-head h2,.assistant-section-head h3{margin:0}
+.assistant-project-list-wrap,.assistant-project-detail{min-width:0}
+.assistant-project-list{min-width:0}
+.assistant-unlinked-note{margin-bottom:10px;padding:10px 12px;border-radius:12px;background:#f6f7fc;color:#5d6372;font-size:12px;line-height:1.45}
+.project-hub-list{display:grid;gap:10px}
+.project-hub-card{width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:#fff;padding:13px;transition:border-color .15s,box-shadow .15s,transform .15s}
+.project-hub-card:hover{border-color:#cdd5fa;box-shadow:0 8px 22px rgba(35,40,65,.06)}
+.project-hub-card.active{border-color:#aeb8ff;box-shadow:0 10px 24px rgba(82,101,232,.12);background:#fbfbff}
+.project-hub-card:active{transform:translateY(1px)}
+.project-hub-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.project-card-sub{margin-top:3px;font-size:11px;color:var(--muted)}
+.project-progress-label{font-size:20px;font-weight:900;color:#313b58;white-space:nowrap}
+.project-progress{height:9px;border-radius:999px;background:#edf0f7;overflow:hidden;margin-top:12px}
+.project-progress.large{height:12px;flex:1;margin:0}
+.project-progress span{display:block;height:100%;border-radius:inherit;background:#9eb2ff}
+.project-progress span.mid{background:#5e77f0}.project-progress span.good{background:#31b37d}
+.project-card-metrics{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.project-card-metrics span,.project-summary-chips .chip{font-size:10px;background:#f2f4f8;color:#58606e;padding:5px 7px;border-radius:999px}
+.assistant-project-hero{display:flex;justify-content:space-between;gap:18px;padding:17px;border:1px solid #dae1fb;border-radius:18px;background:linear-gradient(135deg,#fafcff 0%,#f0f5ff 100%)}
+.assistant-project-hero.done{background:linear-gradient(135deg,#fafafa 0%,#f2f3f5 100%);border-color:#e0e4ec}
+.assistant-project-hero-main{min-width:0;flex:1}
+.assistant-project-eyebrow{font-size:11px;font-weight:900;color:#6673ae;text-transform:uppercase;letter-spacing:.04em}
+.assistant-project-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}.assistant-project-title-row h2{margin:0;font-size:29px}
+.assistant-project-progress-row{display:flex;align-items:center;gap:12px;margin:12px 0 10px}.assistant-project-progress-row b{font-size:28px;min-width:58px}
+.assistant-project-desc{margin-top:11px;max-width:720px}
+.assistant-project-hero-actions{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.assistant-project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:13px}
+.project-info-card h3{font-size:15px}
+.project-mini-list,.project-recent-list,.project-suggestion-list{display:grid;gap:8px}
+.project-mini-row,.project-recent-row{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.project-mini-row.done{opacity:.66}
+.project-mini-main{min-width:0;flex:1}
+.project-mini-title{font-size:13px;font-weight:800;line-height:1.35}
+.project-mini-sub{margin-top:3px;font-size:11px;color:var(--muted);line-height:1.45;white-space:pre-wrap}
+.project-date-pill{font-size:11px;font-weight:900;color:#4058cc;background:#edf1ff;border-radius:10px;padding:6px 8px;min-width:86px;text-align:center}
+.mini-check{width:22px;height:22px;padding:0;border-radius:8px;border:1px solid #c9d1e7;background:#fff;color:#fff;font-size:12px;line-height:1}
+.mini-check.checked{background:var(--accent);border-color:var(--accent);color:#fff}
+.project-recent-dot{width:10px;height:10px;border-radius:999px;background:var(--accent);margin-top:5px;flex:0 0 auto}
+.project-suggestion-item{padding:10px 11px;border-radius:12px;background:#f5f1ff;color:#5f4ca8;font-size:12px;line-height:1.45;border:1px solid #e6ddff}
+.text-button{padding:0;background:transparent;color:var(--accent);font-size:11px;font-weight:900}
+.empty.compact{padding:12px;font-size:11px}
+.assistant-items-card{margin-top:12px;overflow:hidden}
+.assistant-items-summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;cursor:pointer;font-size:12px;font-weight:850;color:#555d69;user-select:none}
+.assistant-items-summary::-webkit-details-marker{display:none}
+.assistant-items-summary small{font-size:10px;font-weight:700;color:var(--muted)}
+.assistant-items-summary::after{content:'▾';font-size:11px;color:var(--muted);margin-left:auto}
+.assistant-items-card[open] .assistant-items-summary::after{content:'▴'}
+.assistant-items-card[open] .assistant-items-summary{border-bottom:1px solid var(--line)}
+.assistant-items-body{padding:10px 13px 13px}
+@media(max-width:1120px){.assistant-project-hub-layout{grid-template-columns:1fr}.assistant-project-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:780px){.assistant-project-grid{grid-template-columns:1fr}.assistant-project-hero{flex-direction:column}.assistant-project-hero-actions{align-items:flex-start}.assistant-project-title-row h2{font-size:23px}.assistant-project-progress-row b{font-size:22px;min-width:0}.assistant-section-head{flex-direction:column}.assistant-items-summary{align-items:flex-start;flex-direction:column}}
