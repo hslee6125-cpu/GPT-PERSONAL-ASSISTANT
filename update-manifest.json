@@ -1,5 +1,5 @@
 {
-  "version": "4.6.2",
+  "version": "4.6.3",
   "runNpmInstall": false,
   "files": [
     {
@@ -81,6 +81,34 @@
     {
       "path": "public/js/main.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/main.js"
+    },
+    {
+      "path": "server/services/system-settings.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/system-settings.js"
+    },
+    {
+      "path": "server/services/update-watcher.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/update-watcher.js"
+    },
+    {
+      "path": "public/js/system-settings.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/system-settings.js"
+    },
+    {
+      "path": "updater.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/updater.js"
+    },
+    {
+      "path": "launcher.ps1",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/launcher.ps1"
+    },
+    {
+      "path": "launcher.vbs",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/launcher.vbs"
+    },
+    {
+      "path": "restart-helper.vbs",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/restart-helper.vbs"
     }
   ]
 }
