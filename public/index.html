@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v5.1.16</title>
+<title>GPT Personal Assistant v5.1.17</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -33,12 +33,12 @@
   <div class="unified-inbox-head">
     <div>
       <h2>통합 Inbox</h2>
-      <div class="notice" style="margin:0">할 일, 메모, 장기 프로젝트를 자연어로 한 번에 입력하세요. 여러 내용을 함께 적어도 GPT가 나눠서 저장합니다.</div>
+      <div class="notice" style="margin:0">할 일, 일정, 장기 프로젝트를 자연어로 한 번에 입력하세요. 메모는 메모 탭에서 직접 작성합니다.</div>
     </div>
     <span class="badge">Ctrl/Cmd + Enter</span>
   </div>
   <div class="inbox-compose">
-    <textarea id="inboxText" placeholder="예) 다음 주 월요일 보험사에 전화하고, 일본 취업 준비는 장기 프로젝트로 관리해. 워홀 신청은 10월 예정이라고 메모해줘."></textarea>
+    <textarea id="inboxText" placeholder="예) 다음 주 월요일 보험사에 전화하고, 금요일 오후 4시부터 6시까지 철수랑 약속"></textarea>
     <button id="analyzeInbox" class="primary">GPT로 정리해서 저장</button>
   </div>
   <div id="inboxResult" class="inbox-result" aria-live="polite"></div>
@@ -211,10 +211,14 @@
           <div class="command-reference-row" data-command="/월 날짜 미정 일정 예정 월"><code>/월 ...</code><span>해당 월의 날짜 미정 일정으로 저장</span><small>예: /10월 철수랑 점심약속 · /2027년4월 일본여행</small><button type="button" class="command-copy" data-copy="/10월 ">복사</button></div>
           <div class="command-reference-row" data-command="/오늘할일 오늘 할 일"><code>/오늘할일 ...</code><span>오늘 할 일로 즉시 저장</span><small>예: /오늘할일 보험사 전화</small><button type="button" class="command-copy" data-copy="/오늘할일 ">복사</button></div>
           <div class="command-reference-row" data-command="/내일할일 내일 할 일"><code>/내일할일 ...</code><span>내일 할 일로 즉시 저장</span><small>예: /내일할일 서류 출력</small><button type="button" class="command-copy" data-copy="/내일할일 ">복사</button></div>
-          <div class="command-reference-row" data-command="/메모 즉시 저장"><code>/메모 ...</code><span>메모로 즉시 저장</span><small>예: /메모 민어 레시피 다시 테스트</small><button type="button" class="command-copy" data-copy="/메모 ">복사</button></div>
           <div id="commandSearchEmpty" class="command-search-empty" hidden>일치하는 명령어가 없습니다.</div>
         </div>
       </details>
+      <div class="settings-section-title" style="margin-top:18px">분류 학습</div>
+      <div class="system-settings-body">
+        <div class="system-settings-head"><div class="notice">할 일 ↔ 일정 수정 이력에서 학습한 개인 분류 가중치를 관리합니다.</div></div>
+        <div class="system-settings-actions"><div class="notice">초기화하면 지금까지 누적된 분류 학습 기록이 삭제됩니다.</div><button id="resetClassificationLearning" type="button" class="small ghost danger">분류 학습 기록 초기화</button></div>
+      </div>
       <div class="settings-info-grid">
         <section class="settings-info-card">
           <div class="settings-info-title">앱 정보</div>
