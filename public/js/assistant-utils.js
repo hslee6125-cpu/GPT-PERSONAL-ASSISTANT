@@ -348,12 +348,27 @@
     return deduped;
   }
 
+  function memoModifiedAt(memo){
+    return String(memo?.updatedAt||memo?.createdAt||'');
+  }
+
+  function sortMemosByModifiedAt(memos,direction='desc'){
+    const dir=direction==='asc'?1:-1;
+    return (Array.isArray(memos)?memos:[]).slice().sort((a,b)=>{
+      const av=Date.parse(memoModifiedAt(a))||0;
+      const bv=Date.parse(memoModifiedAt(b))||0;
+      if(av!==bv)return (av-bv)*dir;
+      return String(a?.id||'').localeCompare(String(b?.id||''))*dir;
+    });
+  }
+
   function createManualMemo(title,details='',meta={}){
     const cleanTitle=String(title||'').trim();
     if(!cleanTitle)throw new Error('메모 제목을 입력해 주세요.');
+    const createdAt=meta.createdAt||new Date().toISOString();
     return {
       id:meta.id||`${Date.now()}-${Math.random()}`,type:'memo',title:cleanTitle,details:String(details||'').trim(),priority:'medium',
-      dueDate:null,dueTime:null,endTime:null,allDay:false,tags:[],projectTitle:null,done:false,createdAt:meta.createdAt||new Date().toISOString()
+      dueDate:null,dueTime:null,endTime:null,allDay:false,tags:[],projectTitle:null,done:false,createdAt,updatedAt:meta.updatedAt||createdAt
     };
   }
 
@@ -873,6 +888,8 @@
     refineNaturalInboxItem,
     prepareNaturalInboxItems,
     createManualMemo,
+    memoModifiedAt,
+    sortMemosByModifiedAt,
     detectUnsupportedRecurrence,
     parseSupportedRecurrence,
     createClassificationFeedback,
