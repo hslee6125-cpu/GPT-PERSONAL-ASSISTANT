@@ -1,18 +1,14 @@
 {
-  "version": "5.3.3",
+  "version": "5.3.4",
   "runNpmInstall": false,
   "files": [
     {
-      "path": "public/index.html",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
-    },
-    {
-      "path": "public/app.css",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"
-    },
-    {
       "path": "public/js/dashboard.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard.js"
+    },
+    {
+      "path": "public/js/daily-assistant-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/daily-assistant-utils.js"
     }
   ]
 }
