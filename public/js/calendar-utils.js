@@ -28,7 +28,7 @@
     for(const item of Array.isArray(assistant)?assistant:[]){
       if(!item||item.deletedAt||!parseDate(item.dueDate))continue;
       if(item.scheduleOnly)out.push({id:String(item.id),source:'assistant',kind:'schedule',title:String(item.title||''),date:item.dueDate,time:item.dueTime||null,endTime:item.endTime||null,allDay:Boolean(item.allDay),projectTitle:item.projectTitle||null,done:Boolean(item.done)});
-      else if(item.type==='todo')out.push({id:String(item.id),source:'assistant',kind:'todo',title:String(item.title||''),date:item.dueDate,time:item.dueTime||null,projectTitle:item.projectTitle||null,done:Boolean(item.done)});
+      else if(item.type==='todo')out.push({id:String(item.id),source:'assistant',kind:'todo',title:String(item.title||''),date:item.dueDate,time:null,projectTitle:item.projectTitle||null,done:Boolean(item.done)});
     }
     for(const item of Array.isArray(cooking)?cooking:[]){if(!item||!parseDate(item.date))continue;out.push({id:String(item.id),source:'cooking',kind:'cooking',title:String(item.name||'요리 프로젝트'),date:item.date,time:item.time||null,projectTitle:null,done:false});}
     return out.sort(entrySort);
