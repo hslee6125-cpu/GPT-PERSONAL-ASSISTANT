@@ -184,6 +184,15 @@
     const todoKeywords=TODO_KEYWORDS.filter(k=>source.includes(k));
     return {dueDate,dueTime,endTime,timeRange,deadline,hasDate:Boolean(dueDate),hasTime:Boolean(dueTime),scheduleKeywords,todoKeywords};
   }
+  function analyzeNaturalInput(text,today) {
+    const source=String(text||'').trim();
+    return {
+      source,
+      recurrence:detectUnsupportedRecurrence(source),
+      multipleIntent:hasExplicitMultipleIntent(source),
+      temporal:extractNaturalTemporalSignals(source,today)
+    };
+  }
   function feedbackFeatures(text) {
     const source=String(text||'');
     const keywords=[...new Set([...SCHEDULE_KEYWORDS,...TODO_KEYWORDS].filter(k=>source.includes(k)))];
@@ -204,12 +213,12 @@
     }
     return score;
   }
-  function refineNaturalInboxItem(item,sourceText,today,feedback=[]) {
+  function refineNaturalInboxItem(item,sourceText,today,feedback=[],analysis=null) {
     const normalized=normalizeInboxItem({...item,sourceText});
     if(!normalized)return null;
     const source=String(sourceText||'').trim();
     if(!source)return normalized;
-    const sig=extractNaturalTemporalSignals(source,today);
+    const sig=(analysis||analyzeNaturalInput(source,today)).temporal;
     const strongTodo=sig.todoKeywords.some(k=>['준비','하기','구매','신청','정리','확인','보내기','전화하기','예약하기','제출','결제','갱신','작성','잡기'].includes(k));
     const strongSchedule=sig.timeRange || (sig.hasDate&&sig.hasTime&&!sig.deadline);
     let schedule=Boolean(normalized.scheduleOnly);
@@ -239,11 +248,12 @@
     return normalized;
   }
 
-  function prepareNaturalInboxItems(rawItems,sourceText,today,feedback=[]) {
+  function prepareNaturalInboxItems(rawItems,sourceText,today,feedback=[],analysis=null) {
     const source=String(sourceText||'').trim();
+    const inputAnalysis=analysis||analyzeNaturalInput(source,today);
     const prepared=[];
     for(const raw of Array.isArray(rawItems)?rawItems:[]){
-      const refined=refineNaturalInboxItem(raw,source,today,feedback);
+      const refined=refineNaturalInboxItem(raw,source,today,feedback,inputAnalysis);
       if(!refined)continue;
       if(refined.type==='memo'&&!refined.scheduleOnly)continue;
       prepared.push(refined);
@@ -262,8 +272,8 @@
       if(duplicateIndex<0)deduped.push(item);
       else if(String(item.title||'').length>String(deduped[duplicateIndex].title||'').length)deduped[duplicateIndex]=item;
     }
-    if(deduped.length>1&&!hasExplicitMultipleIntent(source)){
-      const sig=extractNaturalTemporalSignals(source,today);
+    if(deduped.length>1&&!inputAnalysis.multipleIntent){
+      const sig=inputAnalysis.temporal;
       if(sig.deadline){const todo=deduped.find(x=>x.type==='todo'&&!x.scheduleOnly);if(todo)return [todo];}
       if(sig.timeRange||(sig.hasDate&&sig.hasTime&&!sig.deadline)){const schedule=deduped.find(x=>x.scheduleOnly);if(schedule)return [schedule];}
     }
@@ -371,13 +381,13 @@
   function normalizeInboxItem(item) {
     if (!item || typeof item !== 'object') return null;
     const title = String(item.title ?? '').trim();
-    if (!title) return null;
+    if (!title || !TYPES.has(item.type)) return null;
     const scheduleOnly=Boolean(item.scheduleOnly);
     const dateUndecided=Boolean(item.dateUndecided);
     const dueTime=normalizeDueTime(item.dueTime);
     const endTime=normalizeDueTime(item.endTime);
     return {
-      type: TYPES.has(item.type) ? item.type : 'memo',
+      type: item.type,
       title,
       details: String(item.details ?? '').trim(),
       priority: PRIORITIES.has(item.priority) ? item.priority : 'medium',
@@ -587,22 +597,17 @@
     return `${project.done ? '1' : '0'}-${String(project.nextDue || '9999-99-99')}-${project.title}`;
   }
   function sortTodos(items) {
-    return [...items].sort((a,b)=>{
-      if(Boolean(a.done)!==Boolean(b.done))return Number(a.done)-Number(b.done);
-      if(a.done&&b.done){
-        const completedDiff=parseTimeMs(b.updatedAt||b.createdAt)-parseTimeMs(a.updatedAt||a.createdAt);
-        if(completedDiff!==0)return completedDiff;
-      }
-      const aHas=Boolean(normalizeDueDate(a.dueDate)),bHas=Boolean(normalizeDueDate(b.dueDate));
-      if(aHas!==bHas)return aHas?-1:1;
-      if(aHas&&bHas){
-        const dueDiff=parseDateMs(a.dueDate)-parseDateMs(b.dueDate);if(dueDiff!==0)return dueDiff;
-        const timeDiff=String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));if(timeDiff!==0)return timeDiff;
-      }
-      const createdDiff=parseTimeMs(b.createdAt)-parseTimeMs(a.createdAt);
-      if(createdDiff!==0)return createdDiff;
-      return String(a.title||'').localeCompare(String(b.title||''),'ko');
-    });
+    return (Array.isArray(items)?items:[]).map(item=>{
+      const due=normalizeDueDate(item?.dueDate);
+      return {item,done:Boolean(item?.done),completedMs:parseTimeMs(item?.updatedAt||item?.createdAt),hasDue:Boolean(due),dueMs:due?parseDateMs(due):Number.POSITIVE_INFINITY,dueTime:String(item?.dueTime||'99:99'),createdMs:parseTimeMs(item?.createdAt),title:String(item?.title||'')};
+    }).sort((a,b)=>{
+      if(a.done!==b.done)return Number(a.done)-Number(b.done);
+      if(a.done&&b.done){const completedDiff=b.completedMs-a.completedMs;if(completedDiff!==0)return completedDiff;}
+      if(a.hasDue!==b.hasDue)return a.hasDue?-1:1;
+      if(a.hasDue&&b.hasDue){const dueDiff=a.dueMs-b.dueMs;if(dueDiff!==0)return dueDiff;const timeDiff=a.dueTime.localeCompare(b.dueTime);if(timeDiff!==0)return timeDiff;}
+      const createdDiff=b.createdMs-a.createdMs;if(createdDiff!==0)return createdDiff;
+      return a.title.localeCompare(b.title,'ko');
+    }).map(entry=>entry.item);
   }
   function partitionSchedules(items,today){
     const currentDate=normalizeDueDate(today);
@@ -614,13 +619,13 @@
     return {current:sortSchedules(current),past:sortSchedules(past)};
   }
   function sortSchedules(items) {
-    return [...items].sort((a,b)=>{
-      const diff = parseDateMs(a.dueDate) - parseDateMs(b.dueDate);
-      if (Number.isFinite(diff) && diff !== 0) return diff;
-      const timeDiff=String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));
-      if(timeDiff!==0)return timeDiff;
-      return String(a.title||'').localeCompare(String(b.title||''), 'ko');
-    });
+    return (Array.isArray(items)?items:[]).map(item=>({item,dueMs:parseDateMs(item?.dueDate),dueTime:String(item?.dueTime||'99:99'),title:String(item?.title||'')})).sort((a,b)=>{
+      const aDated=Number.isFinite(a.dueMs),bDated=Number.isFinite(b.dueMs);
+      if(aDated!==bDated)return aDated?-1:1;
+      if(aDated&&bDated){const diff=a.dueMs-b.dueMs;if(diff!==0)return diff;}
+      const timeDiff=a.dueTime.localeCompare(b.dueTime);if(timeDiff!==0)return timeDiff;
+      return a.title.localeCompare(b.title,'ko');
+    }).map(entry=>entry.item);
   }
   function sortRecent(items) {
     return [...items].sort((a,b)=>{
@@ -629,6 +634,56 @@
       return String(b.dueDate||'').localeCompare(String(a.dueDate||''), 'ko');
     });
   }
+  function groupAssistantItems(items,today) {
+    const currentDate=normalizeDueDate(today);
+    const todoList=[],memo=[],project=[],done=[],trash=[],scheduleCurrent=[],schedulePast=[];
+    let openTodoCount=0;
+    for(const item of Array.isArray(items)?items:[]){
+      if(!item||typeof item!=='object')continue;
+      if(item.deletedAt){trash.push(item);continue;}
+      if(item.type==='todo'&&!item.scheduleOnly){todoList.push(item);if(!item.done)openTodoCount++;}
+      if(item.done&&!isSpecialRecord(item))done.push(item);
+      if(item.done)continue;
+      if(item.type==='memo'&&!item.activityOnly)memo.push(item);
+      if(item.type==='project')project.push(item);
+      if(item.type==='todo'&&item.scheduleOnly){
+        const due=normalizeDueDate(item.dueDate);
+        if(currentDate&&due&&due<currentDate)schedulePast.push(item);
+        else scheduleCurrent.push(item);
+      }
+    }
+    const sortedTodos=sortTodos(todoList);
+    const current=sortSchedules(scheduleCurrent),past=sortSchedules(schedulePast);
+    return {
+      todoList:sortedTodos,memo,project,done,trash,schedules:{current,past},
+      counts:{todo:openTodoCount,memo:memo.length,project:project.length,done:done.length,trash:trash.length,schedule:current.length+past.length}
+    };
+  }
+
+  function sameDuplicateIdentity(a,b){
+    const kindA=a?.scheduleOnly?'schedule':a?.type,kindB=b?.scheduleOnly?'schedule':b?.type;
+    return Boolean(a&&b&&kindA===kindB&&String(a.title||'').trim()===String(b.title||'').trim()&&
+      (normalizeDueDate(a.dueDate)||null)===(normalizeDueDate(b.dueDate)||null)&&
+      (normalizeDueTime(a.dueTime)||null)===(normalizeDueTime(b.dueTime)||null)&&
+      (normalizeDueTime(a.endTime)||null)===(normalizeDueTime(b.endTime)||null)&&
+      (normalizeDueMonth(a.pendingMonth)||null)===(normalizeDueMonth(b.pendingMonth)||null)&&
+      Boolean(a.dateUndecided)===Boolean(b.dateUndecided));
+  }
+  function filterRecentDuplicateItems(incoming,existing,now=new Date().toISOString(),windowMs=10000){
+    const nowMs=parseTimeMs(now),limit=Math.max(0,Number(windowMs)||0);
+    const recent=(Array.isArray(existing)?existing:[]).filter(item=>{
+      if(!item||item.deletedAt)return false;
+      const created=parseTimeMs(item.createdAt);
+      return Number.isFinite(nowMs)&&Number.isFinite(created)&&nowMs>=created&&(nowMs-created)<=limit;
+    });
+    const accepted=[];
+    for(const item of Array.isArray(incoming)?incoming:[]){
+      if(recent.some(old=>sameDuplicateIdentity(item,old))||accepted.some(old=>sameDuplicateIdentity(item,old)))continue;
+      accepted.push(item);
+    }
+    return accepted;
+  }
+
   function ensureProjectRecord(map, title) {
     const name = String(title ?? '').trim();
     if (!name) return null;
@@ -707,6 +762,7 @@
 
   return {
     normalizeInboxItem,
+    analyzeNaturalInput,
     extractNaturalTemporalSignals,
     refineNaturalInboxItem,
     prepareNaturalInboxItems,
@@ -722,6 +778,8 @@
     sortTodos,
     sortSchedules,
     partitionSchedules,
+    groupAssistantItems,
+    filterRecentDuplicateItems,
     softDeleteAssistantItem,
     restoreAssistantItem,
     permanentlyDeleteAssistantItem,
