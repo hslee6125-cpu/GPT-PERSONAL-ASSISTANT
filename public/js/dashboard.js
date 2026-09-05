@@ -1,14 +1,14 @@
 (function(root){
   const GPA=root.GPA,s=GPA.state,$=GPA.$,esc=GPA.esc,D=root.DailyAssistantUtils;
   let quickEditorKind=null,quickMenuOpen=false,todoActionMenuId=null,todoActionMode=null,dailyMode=null;
+  let dayPartTimer=null,lastRenderedDayPart=null;
   let briefState={signature:null,status:'idle',sentences:null,error:null};
-
   function weekdayLabel(dateString){const[y,m,d]=dateString.split('-').map(Number);const dt=new Date(y,m-1,d);return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(dt);}
   function nowTime(){const d=new Date();return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
   function isReviewWindow(hour=new Date().getHours()){return hour>=21||hour<5;}
   function defaultMode(){return isReviewWindow()?'review':'day';}
-  function greeting(){const h=new Date().getHours();if(h<12)return'좋은 아침입니다.';if(h<17)return'좋은 오후입니다.';return'좋은 저녁입니다.';}
-  function dayPart(){const h=new Date().getHours();if(h<12)return'morning';if(h<17)return'afternoon';return'evening';}
+  function greeting(){return D.greetingForTime(nowTime());}
+  function dayPart(){return D.dayPartForTime(nowTime());}
   function timeGraphic(part){
     if(part==='morning')return`<div class="daily-time-graphic morning" aria-hidden="true"><svg viewBox="0 0 180 92" focusable="false"><circle class="sun-glow" cx="118" cy="34" r="25"/><circle class="sun" cx="118" cy="34" r="18"/><path class="ray" d="M118 4v11"/><path class="ray" d="M118 53v11"/><path class="ray" d="M88 34H76"/><path class="ray" d="M160 34h12"/><path class="ray" d="M96 12l8 8"/><path class="ray" d="M140 12l-8 8"/><path class="ray" d="M96 56l8-8"/><path class="ray" d="M140 56l-8-8"/><path class="horizon horizon-back" d="M18 73c20-20 42-25 62-10 17-14 35-16 52-5 10 6 18 11 30 15"/><path class="horizon horizon-front" d="M12 79c22-13 45-15 65-3 19-11 40-12 61-2 9 4 18 7 30 8"/></svg></div>`;
     if(part==='afternoon')return`<div class="daily-time-graphic afternoon" aria-hidden="true"><svg viewBox="0 0 180 92" focusable="false"><circle class="sun" cx="126" cy="42" r="22"/><circle class="orbit" cx="126" cy="42" r="34"/><circle class="dot" cx="72" cy="24" r="5"/><circle class="dot small" cx="88" cy="68" r="3"/></svg></div>`;
@@ -44,12 +44,12 @@
   function briefHtml(c,mode){
     const fallback=D.buildFallbackBrief(c,mode),signature=D.contextSignature(c,mode),sentences=briefState.signature===signature&&Array.isArray(briefState.sentences)?briefState.sentences:fallback;
     const state=briefState.signature===signature?briefState.status:'idle';
-    return`<section class="daily-assistant-brief card pad"><div class="daily-brief-head"><div><div class="today-eyebrow">DAILY BRIEF</div><h3>${mode==='review'?'오늘 하루 정리':'오늘의 브리핑'}</h3></div><span class="daily-brief-status">${state==='loading'?'AI 요약 중':state==='ready'?'AI 요약':'로컬 요약'}</span></div><div class="daily-brief-lines">${sentences.map(x=>`<p>${esc(x)}</p>`).join('')}</div></section>`;
+    return`<section class="daily-assistant-brief card pad"><div class="daily-brief-head"><div><div class="today-eyebrow">DAILY REVIEW</div><h3>${mode==='review'?'오늘 하루 정리':'오늘의 브리핑'}</h3></div><span class="daily-brief-status">${state==='loading'?'AI 요약 중':state==='ready'?'AI 요약':'로컬 요약'}</span></div><div class="daily-brief-lines">${sentences.map(x=>`<p>${esc(x)}</p>`).join('')}</div></section>`;
   }
   function reviewHtml(c,emphasized){const r=c.review,t=c.tomorrowFirstSchedule;return`<section class="daily-assistant-review card pad ${emphasized?'is-emphasized':''}"><div class="today-card-head"><div><div class="today-eyebrow">DAILY REVIEW</div><h3>오늘 정리</h3></div><span class="today-section-count">저녁</span></div><div class="daily-review-grid"><div><b>${r.completedTodos}</b><span>오늘 완료</span></div><div><b>${r.unfinishedTodos}</b><span>미완료</span></div><div><b>${r.passedSchedules}</b><span>지나간 일정</span></div><div><b>${t?esc(timeText(t)):'-'}</b><span>${t?'내일 첫 일정':'내일 일정 없음'}</span>${t?`<small class="daily-review-title">${esc(t.title)}</small>`:''}</div></div></section>`;}
   function render(){
     const box=$('todayDashboard');if(!box)return;const c=context(),mode=dailyMode||defaultMode();dailyMode=mode;
-    const hero=$('dailyAssistantHero'),part=dayPart();
+    const hero=$('dailyAssistantHero'),part=dayPart();lastRenderedDayPart=part;
     if(hero)hero.innerHTML=`<section class="today-hero daily-assistant-hero ${part}"><div class="daily-hero-copy"><h2>${esc(greeting())}</h2><div class="daily-date">${esc(weekdayLabel(c.today))}</div></div>${timeGraphic(part)}<div class="today-hero-actions"><div class="daily-mode-switch">${modeButton('day','오늘')}${modeButton('review','리뷰')}</div><div class="today-quick-menu-wrap"><button type="button" class="ghost small" data-dashboard-quick-menu-toggle aria-expanded="${quickMenuOpen?'true':'false'}">+ 빠른 추가 ▾</button>${quickMenuOpen?`<div class="today-quick-menu" role="menu"><button type="button" data-dashboard-quick-add="todo">할 일 추가</button><button type="button" data-dashboard-quick-add="memo">메모 추가</button><button type="button" data-dashboard-quick-add="schedule">일정 추가</button></div>`:''}</div></div></section>`;
     box.innerHTML=`${quickEditor()}
     ${briefHtml(c,mode)}
@@ -83,11 +83,17 @@
       const cal=e.target.closest('[data-dashboard-calendar-item]');if(cal){GPA.showView('calendar');GPA.calendar.openDate(cal.dataset.dashboardCalendarDate);GPA.calendar.openEditor(cal.dataset.dashboardCalendarItem,cal.dataset.dashboardCalendarOccurrence||'');return;}
       const assistant=e.target.closest('[data-dashboard-assistant]');if(assistant){GPA.showView('assistant');GPA.assistant.openFilter(assistant.dataset.dashboardAssistant);return;}
   }
+  function refreshForDayPartChange(){
+    const current=D.dayPartForTime(nowTime());
+    if(lastRenderedDayPart!==null&&current!==lastRenderedDayPart){render();}
+  }
   function bind(){
     $('todayDashboard')?.addEventListener('click',handleDashboardClick);
     $('dailyAssistantHero')?.addEventListener('click',handleDashboardClick);
     document.addEventListener('click',e=>{let changed=false;if(quickMenuOpen&&!e.target.closest?.('[data-dashboard-quick-menu-toggle], .today-quick-menu')){quickMenuOpen=false;changed=true;}if(todoActionMenuId&&!e.target.closest?.('[data-dashboard-todo-actions], .today-todo-action-menu')){todoActionMenuId=null;todoActionMode=null;changed=true;}if(changed)render();});
     document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(quickMenuOpen||todoActionMenuId){quickMenuOpen=false;todoActionMenuId=null;todoActionMode=null;render();}});
+    if(!dayPartTimer)dayPartTimer=setInterval(refreshForDayPartChange,10000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshForDayPartChange();});
   }
   GPA.dashboard={render,bind};
 })(window);
