@@ -1,5 +1,5 @@
 {
-  "version": "5.1.9",
+  "version": "5.1.10",
   "runNpmInstall": false,
   "files": [
     {
@@ -9,6 +9,14 @@
     {
       "path": "public/index.html",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
+    },
+    {
+      "path": "public/js/calendar.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/calendar.js"
+    },
+    {
+      "path": "public/js/storage.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/storage.js"
     }
   ]
 }
