@@ -15,7 +15,7 @@
     const localCommand=AssistantUtils.parseLocalInboxCommand(text,GPA.today());
     if(localCommand){
       setInboxError('');setInboxResult('');
-      if(!localCommand.item){setInboxError(`${localCommand.command} 뒤에 내용을 입력해 주세요.`);GPA.search?.refreshButtonMode();return;}
+      if(!localCommand.item){setInboxError(localCommand.error||`${localCommand.command} 뒤에 내용을 입력해 주세요.`);GPA.search?.refreshButtonMode();return;}
       const saved={id:GPA.uid(),...localCommand.item,done:false,createdAt:new Date().toISOString()};
       s.assistant.unshift(saved);input.value='';GPA.persist(`local-command-${localCommand.command}`);
       const kind=saved.scheduleOnly?'일정':saved.type==='memo'?'메모':'할 일';
