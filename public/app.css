@@ -464,3 +464,11 @@ body.sidebar-overlay-open .sidebar-menu-button{display:none}
 }
 body.sidebar-collapsed .app-main>header{padding-left:54px}
 @media(max-width:900px){body.sidebar-collapsed .app-main>header{padding-left:52px}}
+
+
+/* v5.1.10 calendar alignment + sidebar/settings polish */
+.calendar-week-x-inner{--calendar-scrollbar-width:0px}
+.calendar-week-header,.calendar-week-all-day{box-sizing:border-box;padding-right:var(--calendar-scrollbar-width)}
+.sidebar-settings{display:flex;align-items:center;gap:7px}
+.sidebar-settings-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:15px;line-height:1;color:currentColor}
+.status-alert[hidden]{display:none!important}
