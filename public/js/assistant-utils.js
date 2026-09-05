@@ -98,6 +98,126 @@
     return body ? {title:body,dueTime,endTime} : null;
   }
 
+
+  const WEEKDAYS = {일요일:0,월요일:1,화요일:2,수요일:3,목요일:4,금요일:5,토요일:6};
+  const SCHEDULE_KEYWORDS = ['약속','미팅','회의','예약','진료','상담','식사','점심','저녁','면접','수업','미용실','공연','비행기','기차'];
+  const TODO_KEYWORDS = ['해야','하기','구매','신청','정리','준비','확인','보내기','전화하기','예약하기','제출','결제','갱신','작성','잡기'];
+
+  function weekdayDate(today, weekday, weekOffset=null) {
+    const base = normalizeDueDate(today);
+    if (!base || !Number.isInteger(weekday)) return null;
+    const [y,m,d]=base.split('-').map(Number);
+    const date=new Date(Date.UTC(y,m-1,d));
+    const current=date.getUTCDay();
+    let diff;
+    if (weekOffset === 1) {
+      const mondayOffset=(current+6)%7;
+      const targetOffset=(weekday+6)%7;
+      diff=(7-mondayOffset)+targetOffset;
+    } else if (weekOffset === 0) {
+      const mondayOffset=(current+6)%7;
+      const targetOffset=(weekday+6)%7;
+      diff=targetOffset-mondayOffset;
+    } else {
+      diff=(weekday-current+7)%7;
+      if(diff===0) diff=7;
+    }
+    return addDays(base,diff);
+  }
+  function resolveNaturalDate(text,today) {
+    const source=String(text||'');
+    const base=normalizeDueDate(today);
+    if(!base)return null;
+    if(/오늘/.test(source))return base;
+    if(/내일/.test(source))return addDays(base,1);
+    if(/모레/.test(source))return addDays(base,2);
+    const explicit=source.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+    if(explicit){
+      const year=explicit[1]?Number(explicit[1]):Number(base.slice(0,4));
+      const month=Number(explicit[2]),day=Number(explicit[3]);
+      return isValidCalendarDate(year,month,day)?formatDateParts(year,month,day):null;
+    }
+    const weekdayMatch=source.match(/(?:(이번주|다음주)\s*)?(일요일|월요일|화요일|수요일|목요일|금요일|토요일)/);
+    if(weekdayMatch){
+      const week=weekdayMatch[1]==='다음주'?1:weekdayMatch[1]==='이번주'?0:null;
+      return weekdayDate(base,WEEKDAYS[weekdayMatch[2]],week);
+    }
+    return null;
+  }
+  function extractNaturalTemporalSignals(text,today) {
+    const source=String(text||'').trim();
+    const dueDate=resolveNaturalDate(source,today);
+    let dueTime=null,endTime=null,timeRange=false;
+    const range=source.match(/(오전|오후)?\s*(\d{1,2})시?(?:\s*(\d{1,2})분)?\s*(?:부터|에서)\s*(?:(오전|오후)\s*)?(\d{1,2})시?(?:\s*(\d{1,2})분)?\s*까지/);
+    if(range){
+      const first=range[1]||'';
+      dueTime=parseClock(range[2],range[3]||0,first);
+      endTime=parseClock(range[5],range[6]||0,range[4]||first);
+      if(dueTime&&endTime&&endTime>dueTime)timeRange=true;else{dueTime=null;endTime=null;}
+    }
+    if(!dueTime){
+      const single=source.match(/(오전|오후)\s*(\d{1,2})시(?:\s*(\d{1,2})분)?/);
+      if(single)dueTime=parseClock(single[2],single[3]||0,single[1]);
+    }
+    const deadline=!timeRange && /까지/.test(source) && Boolean(dueDate || dueTime);
+    const scheduleKeywords=SCHEDULE_KEYWORDS.filter(k=>source.includes(k));
+    const todoKeywords=TODO_KEYWORDS.filter(k=>source.includes(k));
+    return {dueDate,dueTime,endTime,timeRange,deadline,hasDate:Boolean(dueDate),hasTime:Boolean(dueTime),scheduleKeywords,todoKeywords};
+  }
+  function feedbackFeatures(text) {
+    const source=String(text||'');
+    const keywords=[...new Set([...SCHEDULE_KEYWORDS,...TODO_KEYWORDS].filter(k=>source.includes(k)))];
+    return {keywords};
+  }
+  function createClassificationFeedback(sourceText,from,to,createdAt=new Date().toISOString()) {
+    return {sourceText:String(sourceText||'').trim(),from:String(from||''),to:String(to||''),features:feedbackFeatures(sourceText),createdAt:String(createdAt)};
+  }
+  function feedbackScore(text,feedback) {
+    const source=String(text||'');
+    let score=0;
+    for(const entry of Array.isArray(feedback)?feedback:[]){
+      if(!entry||!['todo','schedule'].includes(entry.to)||!['todo','schedule'].includes(entry.from)||entry.to===entry.from)continue;
+      const keys=Array.isArray(entry.features?.keywords)?entry.features.keywords:feedbackFeatures(entry.sourceText).keywords;
+      const matches=keys.filter(k=>source.includes(k)).length;
+      if(!matches)continue;
+      score += (entry.to==='schedule'?1:-1) * Math.min(5,matches*5);
+    }
+    return score;
+  }
+  function refineNaturalInboxItem(item,sourceText,today,feedback=[]) {
+    const normalized=normalizeInboxItem({...item,sourceText});
+    if(!normalized)return null;
+    const source=String(sourceText||'').trim();
+    if(!source)return normalized;
+    const sig=extractNaturalTemporalSignals(source,today);
+    const strongTodo=sig.todoKeywords.some(k=>['준비','하기','구매','신청','정리','확인','보내기','전화하기','예약하기','제출','결제','갱신','작성','잡기'].includes(k));
+    const strongSchedule=sig.timeRange || (sig.hasDate&&sig.hasTime&&!sig.deadline);
+    let schedule=Boolean(normalized.scheduleOnly);
+    if(sig.deadline)schedule=false;
+    else if(strongSchedule)schedule=true;
+    else if(strongTodo)schedule=false;
+    else {
+      let score=0;
+      if(sig.hasDate)score+=10;
+      score+=sig.scheduleKeywords.length*20;
+      score-=sig.todoKeywords.length*20;
+      score+=feedbackScore(source,feedback);
+      if(score>=20)schedule=true;
+      else if(score<=-20)schedule=false;
+    }
+    normalized.sourceText=source;
+    if(sig.dueDate&&!normalized.dueDate)normalized.dueDate=sig.dueDate;
+    if(schedule){
+      normalized.type='todo';normalized.scheduleOnly=true;
+      normalized.dueTime=sig.dueTime||normalized.dueTime||null;
+      normalized.endTime=sig.endTime||normalized.endTime||null;
+      normalized.allDay=!normalized.dueTime;
+    }else if(normalized.type==='todo'){
+      normalized.scheduleOnly=false;normalized.dueTime=null;normalized.endTime=null;normalized.allDay=false;
+    }
+    return normalized;
+  }
+
   function formatDateParts(year,month,day) {
     return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   }
@@ -194,22 +314,37 @@
     if (!item || typeof item !== 'object') return null;
     const title = String(item.title ?? '').trim();
     if (!title) return null;
+    const scheduleOnly=Boolean(item.scheduleOnly);
+    const dateUndecided=Boolean(item.dateUndecided);
+    const dueTime=normalizeDueTime(item.dueTime);
+    const endTime=normalizeDueTime(item.endTime);
     return {
       type: TYPES.has(item.type) ? item.type : 'memo',
       title,
       details: String(item.details ?? '').trim(),
       priority: PRIORITIES.has(item.priority) ? item.priority : 'medium',
       dueDate: normalizeDueDate(item.dueDate),
+      dueTime,
+      endTime,
+      allDay: Boolean(item.allDay),
+      scheduleOnly,
+      dateUndecided,
+      pendingMonth: normalizeDueMonth(item.pendingMonth),
+      sourceText: normalizeOptional(item.sourceText),
       tags: normalizeTags(item.tags),
       projectTitle: normalizeOptional(item.projectTitle)
     };
   }
   function summarizeInboxItems(items) {
     const source = Array.isArray(items) ? items : [];
-    const counts = { todo:0, memo:0, project:0 };
-    for (const item of source) if (counts[item?.type] !== undefined) counts[item.type] += 1;
+    const counts = { todo:0, schedule:0, memo:0, project:0 };
+    for (const item of source) {
+      if (item?.type === 'todo' && item?.scheduleOnly) counts.schedule += 1;
+      else if (counts[item?.type] !== undefined) counts[item.type] += 1;
+    }
     const labels = [];
     if (counts.todo) labels.push(`할 일 ${counts.todo}`);
+    if (counts.schedule) labels.push(`일정 ${counts.schedule}`);
     if (counts.memo) labels.push(`메모 ${counts.memo}`);
     if (counts.project) labels.push(`프로젝트 ${counts.project}`);
     return { total:source.length, counts, text:labels.join(' · ') };
@@ -247,8 +382,14 @@
     if ('dueTime' in nextPatch) nextPatch.dueTime = normalizeDueTime(nextPatch.dueTime);
     if ('endTime' in nextPatch) nextPatch.endTime = normalizeDueTime(nextPatch.endTime);
     if ('allDay' in nextPatch) nextPatch.allDay = Boolean(nextPatch.allDay);
-    if (target.type === 'todo' && !target.scheduleOnly) { nextPatch.dueTime = null; nextPatch.endTime = null; nextPatch.allDay = false; }
-    if (target.scheduleOnly) {
+    if ('scheduleOnly' in nextPatch) nextPatch.scheduleOnly = Boolean(nextPatch.scheduleOnly);
+    const effectiveType = 'type' in nextPatch ? nextPatch.type : target.type;
+    const effectiveSchedule = 'scheduleOnly' in nextPatch ? nextPatch.scheduleOnly : Boolean(target.scheduleOnly);
+    if (effectiveType !== 'todo' || !effectiveSchedule) {
+      nextPatch.scheduleOnly = false; nextPatch.dueTime = null; nextPatch.endTime = null; nextPatch.allDay = false; nextPatch.dateUndecided = false; nextPatch.pendingMonth = null;
+    }
+    if (effectiveType === 'todo' && effectiveSchedule) {
+      nextPatch.scheduleOnly = true;
       const pending = 'dateUndecided' in nextPatch ? nextPatch.dateUndecided : Boolean(target.dateUndecided);
       const dueDate = 'dueDate' in nextPatch ? nextPatch.dueDate : normalizeDueDate(target.dueDate);
       const pendingMonth = 'pendingMonth' in nextPatch ? nextPatch.pendingMonth : normalizeDueMonth(target.pendingMonth);
@@ -490,6 +631,9 @@
 
   return {
     normalizeInboxItem,
+    extractNaturalTemporalSignals,
+    refineNaturalInboxItem,
+    createClassificationFeedback,
     parseTodayScheduleCommand,
     parseLocalInboxCommand,
     summarizeInboxItems,
