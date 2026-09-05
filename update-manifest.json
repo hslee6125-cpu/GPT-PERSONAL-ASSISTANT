@@ -1,14 +1,10 @@
 {
-  "version": "5.1.17",
+  "version": "5.1.18",
   "runNpmInstall": false,
   "files": [
     {
       "path": "public/index.html",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
-    },
-    {
-      "path": "public/js/assistant-utils.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-utils.js"
     },
     {
       "path": "public/js/assistant.js",
