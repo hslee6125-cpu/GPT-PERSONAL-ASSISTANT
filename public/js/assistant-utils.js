@@ -91,10 +91,55 @@
     body = stripTrailingSaveVerb(body);
     return body ? {title:body,dueTime,endTime} : null;
   }
+
+  function formatDateParts(year,month,day) {
+    return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+  function isValidCalendarDate(year,month,day) {
+    const normalized = normalizeDueDate(formatDateParts(year,month,day));
+    return Boolean(normalized);
+  }
+  function parseSpecificDateCommand(text,today) {
+    const current = normalizeDueDate(today);
+    if (!current) return null;
+    const currentYear = Number(current.slice(0,4));
+
+    const full = text.match(/^\/((?:(\d{4})년)?(\d{1,2})월(\d{1,2})일)(?:\s+(.*))?$/);
+    if (full) {
+      const command = `/${full[1]}`;
+      const year = full[2] ? Number(full[2]) : currentYear;
+      const month = Number(full[3]);
+      const day = Number(full[4]);
+      if (!isValidCalendarDate(year,month,day)) return {command,item:null,error:'존재하지 않는 날짜입니다.'};
+      const dueDate = formatDateParts(year,month,day);
+      if (dueDate < current) return {command,item:null,error:`${year}년 ${month}월 ${day}일은 이미 지난 날짜입니다.`};
+      const body = String(full[5] || '').trim();
+      if (!body) return {command,item:null,error:`${command} 뒤에 내용을 입력해 주세요.`};
+      const parsed = parseScheduleBody(body);
+      if (!parsed) return {command,item:null,error:`${command} 뒤에 내용을 입력해 주세요.`};
+      return {command,error:null,item:{
+        type:'todo',title:parsed.title,details:'',priority:'medium',dueDate,dueTime:parsed.dueTime,endTime:parsed.endTime,
+        tags:[],projectTitle:null,scheduleOnly:true
+      }};
+    }
+
+    const monthOnly = text.match(/^\/(?:((\d{4})년)?(\d{1,2})월)(?:\s+(.*))?$/);
+    if (monthOnly) {
+      const yearPrefix = monthOnly[2] ? `${monthOnly[2]}년` : '';
+      const month = Number(monthOnly[3]);
+      const command = `/${monthOnly[1]}`;
+      if (month < 1 || month > 12) return {command,item:null,error:'존재하지 않는 날짜입니다.'};
+      return {command,item:null,error:`정확한 날짜가 필요합니다. 예: /${yearPrefix}${month}월9일 1400-1600 철수랑 점심약속`};
+    }
+    return null;
+  }
+
   function parseLocalInboxCommand(value, today) {
     const text = String(value ?? '').trim();
     const dueToday = normalizeDueDate(today);
     if (!text || !dueToday) return null;
+    const specificDate = parseSpecificDateCommand(text,dueToday);
+    if (specificDate) return specificDate;
     const definitions = [
       {command:'/오늘일정',kind:'schedule',offset:0},
       {command:'/내일일정',kind:'schedule',offset:1},
