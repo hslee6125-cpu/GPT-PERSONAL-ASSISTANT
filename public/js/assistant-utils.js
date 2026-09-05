@@ -37,31 +37,59 @@
   function stripTrailingSaveVerb(value) {
     return String(value ?? '').replace(/\s*(?:추가해(?:줘)?|추가|등록해(?:줘)?|등록|저장해(?:줘)?|저장)\s*[.!?]?$/,'').trim();
   }
+  function parseClock(hourValue, minuteValue=0, meridiem='') {
+    let hour = Number(hourValue);
+    const minute = Number(minuteValue || 0);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+    if (meridiem) {
+      if (hour < 1 || hour > 12) return null;
+      if (meridiem === '오전' && hour === 12) hour = 0;
+      if (meridiem === '오후' && hour !== 12) hour += 12;
+    } else if (hour < 0 || hour > 23) return null;
+    return `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+  }
+  function parseCompactClock(value) {
+    const text=String(value||'');
+    if(!/^\d{4}$/.test(text))return null;
+    return parseClock(Number(text.slice(0,2)),Number(text.slice(2)), '');
+  }
   function parseScheduleBody(value) {
     let body = String(value ?? '').trim();
     if (!body) return null;
-    let dueTime = null;
-    const patterns = [
-      /(?:^|\s)(오전|오후)?\s*(\d{1,2}):(\d{2})(?=\s|$)/,
-      /(?:^|\s)(오전|오후)?\s*(\d{1,2})시(?:\s*(\d{1,2})분)?(?:에)?(?=\s|$)/
+    let dueTime = null, endTime = null;
+
+    const rangeParsers = [
+      {pattern:/(?:^|\s)(\d{4})\s*[-~]\s*(\d{4})(?=\s|$)/, parse:m=>[parseCompactClock(m[1]),parseCompactClock(m[2])]},
+      {pattern:/(?:^|\s)(오전|오후)?\s*(\d{1,2}):(\d{2})\s*[-~]\s*(?:(오전|오후)\s*)?(\d{1,2}):(\d{2})(?=\s|$)/, parse:m=>{const first=m[1]||'';return[parseClock(m[2],m[3],first),parseClock(m[5],m[6],m[4]||first)];}},
+      {pattern:/(?:^|\s)(오전|오후)?\s*(\d{1,2})시(?:\s*(\d{1,2})분)?\s*[-~]\s*(?:(오전|오후)\s*)?(\d{1,2})시(?:\s*(\d{1,2})분)?(?:에)?(?=\s|$)/, parse:m=>{const first=m[1]||'';return[parseClock(m[2],m[3]||0,first),parseClock(m[5],m[6]||0,m[4]||first)];}}
     ];
-    for (const pattern of patterns) {
-      const match = body.match(pattern);
-      if (!match) continue;
-      let hour = Number(match[2]);
-      const minute = Number(match[3] || 0);
-      const meridiem = match[1] || '';
-      if (meridiem) {
-        if (hour < 1 || hour > 12 || minute > 59) continue;
-        if (meridiem === '오전' && hour === 12) hour = 0;
-        if (meridiem === '오후' && hour !== 12) hour += 12;
-      } else if (hour > 23 || minute > 59) continue;
-      dueTime = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
-      body = `${body.slice(0, match.index)} ${body.slice(match.index + match[0].length)}`.replace(/\s+/g,' ').trim();
+    for(const {pattern,parse} of rangeParsers){
+      const match=body.match(pattern);
+      if(!match)continue;
+      const [start,end]=parse(match);
+      if(!start||!end||end<=start)continue;
+      dueTime=start;endTime=end;
+      body=`${body.slice(0,match.index)} ${body.slice(match.index+match[0].length)}`.replace(/\s+/g,' ').trim();
       break;
     }
+
+    if(!dueTime){
+      const patterns = [
+        /(?:^|\s)(오전|오후)?\s*(\d{1,2}):(\d{2})(?=\s|$)/,
+        /(?:^|\s)(오전|오후)?\s*(\d{1,2})시(?:\s*(\d{1,2})분)?(?:에)?(?=\s|$)/
+      ];
+      for (const pattern of patterns) {
+        const match = body.match(pattern);
+        if (!match) continue;
+        const parsed=parseClock(match[2],match[3]||0,match[1]||'');
+        if(!parsed)continue;
+        dueTime=parsed;
+        body = `${body.slice(0, match.index)} ${body.slice(match.index + match[0].length)}`.replace(/\s+/g,' ').trim();
+        break;
+      }
+    }
     body = stripTrailingSaveVerb(body);
-    return body ? {title:body,dueTime} : null;
+    return body ? {title:body,dueTime,endTime} : null;
   }
   function parseLocalInboxCommand(value, today) {
     const text = String(value ?? '').trim();
@@ -82,7 +110,7 @@
       const parsed = parseScheduleBody(body);
       if (!parsed) return {command:def.command,item:null};
       return {command:def.command,item:{
-        type:'todo',title:parsed.title,details:'',priority:'medium',dueDate:addDays(dueToday,def.offset),dueTime:parsed.dueTime,
+        type:'todo',title:parsed.title,details:'',priority:'medium',dueDate:addDays(dueToday,def.offset),dueTime:parsed.dueTime,endTime:parsed.endTime,
         tags:[],projectTitle:null,scheduleOnly:true
       }};
     }
@@ -92,7 +120,7 @@
       type:'memo',title:body,details:'',priority:'medium',dueDate:null,dueTime:null,tags:[],projectTitle:null
     }};
     return {command:def.command,item:{
-      type:'todo',title:body,details:'',priority:'medium',dueDate:addDays(dueToday,def.offset),dueTime:null,tags:[],projectTitle:null
+      type:'todo',title:body,details:'',priority:'medium',dueDate:addDays(dueToday,def.offset),dueTime:null,endTime:null,tags:[],projectTitle:null
     }};
   }
   function parseTodayScheduleCommand(value, today) {
@@ -155,6 +183,7 @@
     if ('dueTime' in nextPatch) nextPatch.dueTime = normalizeDueTime(nextPatch.dueTime);
     if ('endTime' in nextPatch) nextPatch.endTime = normalizeDueTime(nextPatch.endTime);
     if ('allDay' in nextPatch) nextPatch.allDay = Boolean(nextPatch.allDay);
+    if (target.type === 'todo' && !target.scheduleOnly) { nextPatch.dueTime = null; nextPatch.endTime = null; nextPatch.allDay = false; }
     if (target.scheduleOnly) {
       const allDay = 'allDay' in nextPatch ? nextPatch.allDay : Boolean(target.allDay);
       if (allDay) { nextPatch.dueTime = null; nextPatch.endTime = null; }
@@ -223,7 +252,7 @@
       done: Boolean(values.done),
       createdAt: meta.createdAt || new Date().toISOString()
     };
-    if (kind === 'todo') return { ...common, type:'todo' };
+    if (kind === 'todo') return { ...common, type:'todo', dueTime:null, endTime:null, allDay:false };
     if (kind === 'memo') return { ...common, type:'memo', dueDate:null };
     if (kind === 'schedule') {
       if (!common.dueDate) throw new Error('일정 날짜를 입력해 주세요.');
@@ -249,6 +278,7 @@
     if ('dueTime' in next) next.dueTime = normalizeDueTime(next.dueTime);
     if ('endTime' in next) next.endTime = normalizeDueTime(next.endTime);
     if ('allDay' in next) next.allDay = Boolean(next.allDay);
+    if (target.type === 'todo' && !target.scheduleOnly) { next.dueTime=null; next.endTime=null; next.allDay=false; }
     if (target.scheduleOnly) {
       const allDay='allDay' in next?next.allDay:Boolean(target.allDay);
       if(allDay){next.dueTime=null;next.endTime=null;}
