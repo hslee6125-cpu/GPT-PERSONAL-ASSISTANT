@@ -1,13 +1,22 @@
 {
-  "version": "5.3.0",
+  "version": "5.3.1",
   "runNpmInstall": false,
   "files": [
-    {"path":"public/index.html","url":"https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"},
-    {"path":"public/app.css","url":"https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"},
-    {"path":"public/js/dashboard.js","url":"https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard.js"},
-    {"path":"public/js/daily-assistant-utils.js","url":"https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/daily-assistant-utils.js"},
-    {"path":"server.js","url":"https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server.js"},
-    {"path":"server/router.js","url":"https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/router.js"},
-    {"path":"server/services/openai.js","url":"https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/server/services/openai.js"}
+    {
+      "path": "public/index.html",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
+    },
+    {
+      "path": "public/app.css",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"
+    },
+    {
+      "path": "public/js/dashboard.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard.js"
+    },
+    {
+      "path": "public/js/main.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/main.js"
+    }
   ]
 }
