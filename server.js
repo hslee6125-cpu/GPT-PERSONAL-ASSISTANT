@@ -40,7 +40,7 @@ server.listen(PORT,'127.0.0.1',()=>{
   if(autoStart.error)console.error(`[Auto Start] ${autoStart.error}`);
   updateWatcher.start();
   console.log('');
-  console.log('GPT Personal Assistant v4');
+  console.log(`GPT Personal Assistant v${APP_VERSION}`);
   console.log(`http://127.0.0.1:${PORT}`);
   console.log(`Model: ${OPENAI_MODEL}`);
   console.log(`API key: ${openai.configured?'configured':'NOT configured'}`);
