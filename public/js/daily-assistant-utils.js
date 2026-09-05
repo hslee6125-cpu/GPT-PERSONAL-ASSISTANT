@@ -78,7 +78,7 @@
       metrics:{
         todaySchedules:todaySchedules.length,
         todayTodos:todayTodos.length,
-        important:todayTodos.length+overdueTodos.length+(nextSchedule?1:0),
+        important:todayTodos.filter(item=>item.priority==='high').length+overdueTodos.filter(item=>item.priority==='high').length,
         unresolved:overdueTodos.length
       }
     };
@@ -99,6 +99,7 @@
     else out.push('오늘 등록된 일정은 없습니다.');
     if(Number(c.metrics?.todayTodos||0)>0)out.push(`오늘 마감인 할 일이 ${Number(c.metrics.todayTodos)}개 있습니다.`);
     else out.push('오늘 마감인 할 일은 없습니다.');
+    if(Number(c.metrics?.important||0)>0)out.push(`중요도가 높은 할 일은 ${Number(c.metrics.important)}개 있습니다.`);
     if(Number(c.metrics?.unresolved||0)>0)out.push(`기한이 지난 미처리 할 일이 ${Number(c.metrics.unresolved)}개 있습니다.`);
     if(Array.isArray(c.openTimeWindows)&&c.openTimeWindows.length){const w=c.openTimeWindows[0];out.push(`${w.start}부터 ${w.end}까지 비교적 여유 있는 시간이 있습니다.`);}
     return out.slice(0,4);
@@ -109,8 +110,8 @@
       mode,today:c.today,nowTime:c.nowTime,
       metrics:c.metrics,
       schedules:(c.todaySchedules||[]).map(x=>[x.occurrenceOf||x.id,x.dueDate,x.dueTime,x.endTime,x.title]),
-      todos:(c.todayTodos||[]).map(x=>[x.id,x.dueDate,x.title]),
-      overdue:(c.overdueTodos||[]).map(x=>[x.id,x.dueDate,x.title]),
+      todos:(c.todayTodos||[]).map(x=>[x.id,x.dueDate,x.dueTime,x.priority,x.title]),
+      overdue:(c.overdueTodos||[]).map(x=>[x.id,x.dueDate,x.dueTime,x.priority,x.title]),
       completed:(c.completedToday||[]).map(x=>[x.id,x.updatedAt]),
       tomorrow:c.tomorrowFirstSchedule?[c.tomorrowFirstSchedule.occurrenceOf||c.tomorrowFirstSchedule.id,c.tomorrowFirstSchedule.dueDate,c.tomorrowFirstSchedule.dueTime,c.tomorrowFirstSchedule.title]:null
     };
