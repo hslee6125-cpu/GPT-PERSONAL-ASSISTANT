@@ -67,3 +67,12 @@
 
 /* v5.2.5 weekly multi-day repeat picker */
 .cal52-weekday-picker{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #e4e8f0;border-radius:12px;background:#f8fafc}.cal52-weekday-picker.hidden{display:none}.cal52-weekday-picker>span{font-size:12px;font-weight:700;color:#667085;min-width:60px}.cal52-weekday-picker>div{display:flex;gap:7px;flex-wrap:wrap}.cal52-weekday-picker label{position:relative;cursor:pointer}.cal52-weekday-picker input{position:absolute;opacity:0;pointer-events:none}.cal52-weekday-picker b{display:flex;align-items:center;justify-content:center;width:34px;height:30px;border:1px solid #d9e0eb;border-radius:9px;background:#fff;font-size:12px;color:#475467}.cal52-weekday-picker input:checked+b{border-color:#7fa1ff;background:#edf3ff;color:#2457d6}
+
+/* v5.2.7 Calendar stability / layout polish */
+.cal52-weekdays,.cal52-grid{grid-template-columns:repeat(7,minmax(0,1fr))}
+.cal52-cell{min-width:0;overflow:hidden}
+.cal52-dot{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal52-weekdays .sunday,.cal52-cell.sunday .cal52-day,.cal52-week-day-head.sunday span,.cal52-week-day-head.sunday b{color:#d92d20!important}
+.cal52-cell.muted.sunday .cal52-day{color:#ef8b83!important}
+.cal52-empty{min-height:38px;display:flex;align-items:center;justify-content:center;margin-top:8px;padding:9px 10px;border:1px dashed rgba(148,163,184,.38);border-radius:10px;background:rgba(255,255,255,.5);color:#8a94a4;font-size:12px;text-align:center}
+.cal52-side>.past-section{order:99}
