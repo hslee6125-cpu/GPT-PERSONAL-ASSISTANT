@@ -46,6 +46,11 @@ function createRequestHandler({port,publicDir,version,openai,storage,documentSto
         const p=await readJsonBody(req,1_000_000),text=String(p.text||'').trim();if(!text)return send(res,400,JSON.stringify({error:'내용을 입력해 주세요.'}));
         return send(res,200,JSON.stringify(await openai.analyzeInbox(text,p.currentDate)));
       }
+      if(req.method==='POST'&&req.url==='/api/daily-brief'){
+        const p=await readJsonBody(req,200_000),context=p?.context,mode=p?.mode==='review'?'review':'day';
+        if(!context||typeof context!=='object'||Array.isArray(context))return send(res,400,JSON.stringify({error:'Daily Assistant 요약 데이터가 없습니다.'}));
+        return send(res,200,JSON.stringify(await openai.dailyBrief(context,mode)));
+      }
       if(req.method==='POST'&&req.url==='/api/parse-recipes'){
         const p=await readJsonBody(req,4_000_000),text=String(p.text||'').trim();if(!text)return send(res,400,JSON.stringify({error:'레시피 내용을 입력해 주세요.'}));
         return send(res,200,JSON.stringify(await openai.parseRecipes(text,'직접 입력')));
