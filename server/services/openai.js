@@ -14,6 +14,26 @@ const INBOX_SCHEMA = {
     },required:['type','title','details','priority','dueDate','tags','projectTitle']}}
   }, required:['summary','items']
 };
+
+const DAILY_BRIEF_SCHEMA = {
+  type:'object', additionalProperties:false,
+  properties:{
+    sentences:{type:'array',minItems:1,maxItems:4,items:{type:'string'}}
+  }, required:['sentences']
+};
+function buildDailyBriefInstructions(mode='day') {
+  const review=mode==='review';
+  return `너는 한국어 개인 비서의 Daily Assistant 요약 엔진이다.
+입력은 앱이 이미 계산한 구조화된 사실 데이터다.
+- 입력에 없는 일정, 할 일, 사람, 장소, 숫자, 중요도를 추측하거나 만들어내지 않는다.
+- 일정 수와 할 일 수는 입력 metrics 값을 그대로 따른다.
+- ${review?'저녁 Daily Review':'오늘 Daily Brief'} 문장만 작성한다.
+- 짧고 자연스러운 한국어 문장 1~${review?3:4}개로 작성한다.
+- 행동 제안은 openTimeWindows처럼 입력에 근거가 있을 때만 한다.
+- 사용자의 데이터를 수정하라고 명령하지 않는다.
+- 과장, 감정적 평가, 근거 없는 우선순위 판단을 하지 않는다.`;
+}
+
 const RECIPE_SCHEMA = {
   type:'object', additionalProperties:false,
   properties:{
@@ -87,6 +107,12 @@ function createOpenAIService({ apiKey, model='gpt-5-nano' }) {
     const instructions=buildAssistantInstructions(currentDate);
     return runAssistantAnalyzeWithRetry(policy => callOpenAI(instructions,text,policy.maxOutputTokens,'assistant_inbox',INBOX_SCHEMA,{reasoningEffort:policy.reasoningEffort,timeoutMs:30_000}));
   }
+  async function dailyBrief(context,mode='day') {
+    const safeMode=mode==='review'?'review':'day';
+    const input=JSON.stringify(context||{});
+    if(input.length>60_000)throw new Error('Daily Assistant 요약 데이터가 너무 큽니다.');
+    return callOpenAI(buildDailyBriefInstructions(safeMode),input,700,'daily_assistant_brief',DAILY_BRIEF_SCHEMA,{reasoningEffort:'low',timeoutMs:20_000});
+  }
   function recipeInstructions(sourceLabel='직접 입력') {
     return `너는 전문 주방용 레시피 구조화 엔진이다.\n입력 출처: ${sourceLabel}\n\n사용자가 제공한 문서나 텍스트 안의 레시피를 찾아 각각 독립된 레시피로 구조화한다.
 문서에 레시피가 1개면 recipes 배열에 1개만 넣고, 여러 개면 전부 분리한다.\n- 원문에 없는 재료, 숫자, 조리법을 추측하거나 만들어내지 않는다.\n- baseServings는 기준 인분이 명시된 경우 숫자로, 아니면 null.\n- ingredient amount는 숫자로 파싱 가능할 때 숫자, 아니면 null.\n- 범위(예: 10~12g)는 임의로 평균내지 말고 amount=null로 두고 rawAmount에 원문을 기록한다.\n- unit은 원문 단위를 보존하되 명확한 단위는 짧게 정리한다.\n- prep은 해당 재료의 손질/전처리.\n- steps는 실제 조리 순서만.\n- notes는 테스트 노트, 보관, 주의사항, 기타 메모.\n- yieldAmount/yieldUnit은 완성량이 명시된 경우만.\n- portionAmount/portionUnit은 1인 사용량이 명시된 경우만.\n- 문서 표의 열이 재료/수량/단위를 의미하면 각 행을 ingredient로 읽는다.\n- 제목/섹션을 이용해 여러 레시피를 분리한다.\n- 소스/가니시/젤/무스 등이 각각 독립적으로 배합되어 있고 별도 제목이 있다면 별도 레시피로 분리한다.\n- 단순한 코스명/메뉴명만 있고 배합이 없으면 레시피로 만들지 않는다.`;
@@ -99,7 +125,7 @@ function createOpenAIService({ apiKey, model='gpt-5-nano' }) {
     if(!result.recipes.length) throw new Error('문서에서 저장 가능한 레시피를 찾지 못했습니다.');
     return result;
   }
-  return { configured:Boolean(cleanKey), model, analyzeInbox, parseRecipes };
+  return { configured:Boolean(cleanKey), model, analyzeInbox, dailyBrief, parseRecipes };
 }
 
-module.exports = { createOpenAIService, buildAssistantInstructions, INBOX_SCHEMA, RECIPE_SCHEMA };
+module.exports = { createOpenAIService, buildAssistantInstructions, buildDailyBriefInstructions, INBOX_SCHEMA, DAILY_BRIEF_SCHEMA, RECIPE_SCHEMA };
