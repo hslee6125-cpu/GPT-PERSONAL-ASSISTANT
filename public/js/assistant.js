@@ -37,7 +37,11 @@
     if(localCommand){
       setInboxError('');setInboxResult('');
       if(!localCommand.item){setInboxError(localCommand.error||`${localCommand.command} 뒤에 내용을 입력해 주세요.`);GPA.search?.refreshButtonMode();return;}
-      const saved={id:GPA.uid(),...localCommand.item,done:false,createdAt:new Date().toISOString()};
+      const candidate={...localCommand.item,done:false,createdAt:new Date().toISOString()};
+      const semantic=AssistantUtils.reconcileUndecidedScheduleConflicts([candidate],s.assistant);
+      if(!semantic.items.length){setInboxError('같은 제목의 확정 일정이 이미 등록되어 있어 날짜 미정 일정을 중복 저장하지 않았습니다.');GPA.search?.refreshButtonMode();return;}
+      if(semantic.supersededIds.length){const ids=new Set(semantic.supersededIds);s.assistant=s.assistant.filter(item=>!ids.has(item?.id));}
+      const saved={id:GPA.uid(),...semantic.items[0]};
       s.assistant.unshift(saved);input.value='';GPA.persist(`local-command-${localCommand.command}`);
       const kind=saved.scheduleOnly?(saved.dateUndecided?'날짜 미정 일정':'일정'):saved.type==='memo'?'메모':'할 일';
       const when=saved.dateUndecided&&saved.pendingMonth?`${saved.pendingMonth} · 날짜 미정 · `:saved.dueDate?`${saved.dueDate} · `:'';
@@ -50,8 +54,11 @@
       const rawItems=Array.isArray(d.items)?d.items:[];const feedback=loadClassificationFeedback();
       const prepared=AssistantUtils.prepareNaturalInboxItems(rawItems,text,GPA.today(),feedback,analysis);
       if(!prepared.length){if(rawItems.some(item=>item?.type==='memo'))throw new Error('메모는 자동 생성하지 않습니다. 메모 탭에서 직접 작성해 주세요.');throw new Error('저장 가능한 항목을 찾지 못했습니다. 내용을 조금 더 구체적으로 입력해 주세요.');}
-      const now=new Date().toISOString();const items=AssistantUtils.filterRecentDuplicateItems(prepared,s.assistant,now,10000);
+      const semantic=AssistantUtils.reconcileUndecidedScheduleConflicts(prepared,s.assistant);
+      if(!semantic.items.length)throw new Error('같은 제목의 확정 일정이 이미 등록되어 있어 날짜 미정 일정을 중복 저장하지 않았습니다.');
+      const now=new Date().toISOString();const items=AssistantUtils.filterRecentDuplicateItems(semantic.items,s.assistant,now,10000);
       if(!items.length)throw new Error('같은 항목이 방금 등록되어 중복 저장하지 않았습니다.');
+      if(semantic.supersededIds.length){const ids=new Set(semantic.supersededIds);s.assistant=s.assistant.filter(item=>!ids.has(item?.id));}
       const saved=items.map(x=>({id:GPA.uid(),...x,done:false,createdAt:now}));s.assistant.unshift(...saved);
       const firstProject=(saved.find(x=>x.type==='project')?.title)||saved.find(x=>x.projectTitle)?.projectTitle||'';if(firstProject)projectHub.select(firstProject);
       input.value='';GPA.persist();const result=AssistantUtils.summarizeInboxItems(items);const modelSummary=String(d.summary||'').trim();
