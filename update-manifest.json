@@ -1,14 +1,10 @@
 {
-  "version": "5.2.9",
+  "version": "5.2.10",
   "runNpmInstall": false,
   "files": [
     {
       "path": "public/index.html",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
-    },
-    {
-      "path": "public/calendar-v52.css",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/calendar-v52.css"
     }
   ]
 }
