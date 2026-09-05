@@ -6,7 +6,7 @@
     localStorage.setItem(GPA.KEYS.recipes,JSON.stringify(s.recipes));
     localStorage.setItem(GPA.KEYS.cooking,JSON.stringify(s.cooking));
   };
-  GPA.setStorageBadge=(text,ok=true)=>{const el=GPA.$('storageBadge');if(el){el.textContent=text;el.classList.toggle('storage-bad',!ok);}GPA.settingsInfo?.renderStorage?.();};
+  GPA.setStorageBadge=(text,ok=true)=>{const el=GPA.$('storageBadge');if(el){el.textContent=text;el.hidden=Boolean(ok);el.classList.toggle('storage-bad',!ok);}GPA.settingsInfo?.renderStorage?.();};
   GPA.queueOneDriveSave=(reason='auto')=>{
     if(!s.oneDriveAvailable||!s.oneDriveReady)return;
     clearTimeout(s.saveTimer);
