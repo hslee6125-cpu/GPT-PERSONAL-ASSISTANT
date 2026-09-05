@@ -45,7 +45,7 @@
       done:false,
       createdAt:meta.createdAt||new Date().toISOString()
     };
-    if(kind==='todo')return {...common,type:'todo'};
+    if(kind==='todo')return {...common,type:'todo',dueTime:null,endTime:null,allDay:false};
     if(kind==='memo')return {...common,type:'memo',dueDate:null,dueTime:null};
     if(kind==='schedule'){
       if(!dueDate)throw new Error('일정 날짜를 입력해 주세요.');
