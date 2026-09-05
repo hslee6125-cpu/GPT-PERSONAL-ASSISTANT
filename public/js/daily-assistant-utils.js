@@ -26,6 +26,19 @@
     if(!Number.isNaN(parsed.getTime()))return `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
     return'00:00';
   }
+  function dayPartForTime(value){
+    const time=normalizeNow(value),minutes=toMinutes(time);
+    if(minutes==null)return'evening';
+    if(minutes>=390&&minutes<=720)return'morning';
+    if(minutes>=721&&minutes<=1110)return'afternoon';
+    return'evening';
+  }
+  function greetingForTime(value){
+    const part=dayPartForTime(value);
+    if(part==='morning')return'좋은 아침입니다.';
+    if(part==='afternoon')return'좋은 오후입니다.';
+    return'좋은 저녁입니다.';
+  }
   function openWindows(schedules,nowTime,{dayStart='05:00',dayEnd='22:00',minimumMinutes=45}={}){
     const start=Math.max(toMinutes(dayStart),toMinutes(nowTime)??0),end=toMinutes(dayEnd);
     if(start==null||end==null||start>=end)return[];
@@ -117,5 +130,5 @@
     };
     return JSON.stringify(compact);
   }
-  return{buildDailyContext,buildFallbackBrief,contextSignature};
+  return{buildDailyContext,buildFallbackBrief,contextSignature,dayPartForTime,greetingForTime};
 });
