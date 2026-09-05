@@ -103,6 +103,26 @@
   const SCHEDULE_KEYWORDS = ['약속','미팅','회의','예약','진료','상담','식사','점심','저녁','면접','수업','미용실','공연','비행기','기차'];
   const TODO_KEYWORDS = ['해야','하기','구매','신청','정리','준비','확인','보내기','전화하기','예약하기','제출','결제','갱신','작성','잡기'];
 
+  function detectUnsupportedRecurrence(text) {
+    const source=String(text||'').trim();
+    if(!source)return null;
+    const match=source.match(/(?:^|\s|,)(매일|매주|격주|매월|매달|매년|매\s*\d+\s*(?:일|주|개월|달|년)\s*마다|\d+\s*(?:일|주|개월|달|년)\s*마다)(?=\s|,|$)/);
+    return match ? { token:match[1], error:'반복 일정은 아직 미지원입니다. 한 번의 일정으로 입력해 주세요.' } : null;
+  }
+  function hasExplicitMultipleIntent(text){
+    const source=String(text||'');
+    return /(?:\n|,|그리고|또\s|\s및\s|\s하고\s)/.test(source);
+  }
+  function titleTokens(value){
+    return String(value||'').toLowerCase().replace(/[^0-9a-z가-힣\s]/g,' ').split(/\s+/).filter(Boolean);
+  }
+  function titleSimilarity(a,b){
+    const A=new Set(titleTokens(a)),B=new Set(titleTokens(b));
+    if(!A.size||!B.size)return 0;
+    let inter=0;for(const t of A)if(B.has(t))inter++;
+    return inter/Math.min(A.size,B.size);
+  }
+
   function weekdayDate(today, weekday, weekOffset=null) {
     const base = normalizeDueDate(today);
     if (!base || !Number.isInteger(weekday)) return null;
@@ -205,6 +225,7 @@
       if(score>=20)schedule=true;
       else if(score<=-20)schedule=false;
     }
+    if((sig.deadline||strongTodo)&&normalized.type==='memo')normalized.type='todo';
     normalized.sourceText=source;
     if(sig.dueDate&&!normalized.dueDate)normalized.dueDate=sig.dueDate;
     if(schedule){
@@ -216,6 +237,46 @@
       normalized.scheduleOnly=false;normalized.dueTime=null;normalized.endTime=null;normalized.allDay=false;
     }
     return normalized;
+  }
+
+  function prepareNaturalInboxItems(rawItems,sourceText,today,feedback=[]) {
+    const source=String(sourceText||'').trim();
+    const prepared=[];
+    for(const raw of Array.isArray(rawItems)?rawItems:[]){
+      const refined=refineNaturalInboxItem(raw,source,today,feedback);
+      if(!refined)continue;
+      if(refined.type==='memo'&&!refined.scheduleOnly)continue;
+      prepared.push(refined);
+    }
+    const deduped=[];
+    for(const item of prepared){
+      const kind=item.scheduleOnly?'schedule':item.type;
+      const duplicateIndex=deduped.findIndex(other=>{
+        const otherKind=other.scheduleOnly?'schedule':other.type;
+        if(kind!==otherKind)return false;
+        if((item.dueDate||null)!==(other.dueDate||null))return false;
+        if((item.dueTime||null)!==(other.dueTime||null))return false;
+        if((item.endTime||null)!==(other.endTime||null))return false;
+        return titleSimilarity(item.title,other.title)>=0.6;
+      });
+      if(duplicateIndex<0)deduped.push(item);
+      else if(String(item.title||'').length>String(deduped[duplicateIndex].title||'').length)deduped[duplicateIndex]=item;
+    }
+    if(deduped.length>1&&!hasExplicitMultipleIntent(source)){
+      const sig=extractNaturalTemporalSignals(source,today);
+      if(sig.deadline){const todo=deduped.find(x=>x.type==='todo'&&!x.scheduleOnly);if(todo)return [todo];}
+      if(sig.timeRange||(sig.hasDate&&sig.hasTime&&!sig.deadline)){const schedule=deduped.find(x=>x.scheduleOnly);if(schedule)return [schedule];}
+    }
+    return deduped;
+  }
+
+  function createManualMemo(title,details='',meta={}){
+    const cleanTitle=String(title||'').trim();
+    if(!cleanTitle)throw new Error('메모 제목을 입력해 주세요.');
+    return {
+      id:meta.id||`${Date.now()}-${Math.random()}`,type:'memo',title:cleanTitle,details:String(details||'').trim(),priority:'medium',
+      dueDate:null,dueTime:null,endTime:null,allDay:false,tags:[],projectTitle:null,done:false,createdAt:meta.createdAt||new Date().toISOString()
+    };
   }
 
   function formatDateParts(year,month,day) {
@@ -275,14 +336,14 @@
     const text = String(value ?? '').trim();
     const dueToday = normalizeDueDate(today);
     if (!text || !dueToday) return null;
+    if(text==='/메모'||text.startsWith('/메모 '))return {command:'/메모',item:null,error:'메모는 자동 생성하지 않습니다. 메모 탭에서 직접 작성해 주세요.'};
     const specificDate = parseSpecificDateCommand(text,dueToday);
     if (specificDate) return specificDate;
     const definitions = [
       {command:'/오늘일정',kind:'schedule',offset:0},
       {command:'/내일일정',kind:'schedule',offset:1},
       {command:'/오늘할일',kind:'todo',offset:0},
-      {command:'/내일할일',kind:'todo',offset:1},
-      {command:'/메모',kind:'memo',offset:null}
+      {command:'/내일할일',kind:'todo',offset:1}
     ];
     const def = definitions.find(entry=>text===entry.command||text.startsWith(`${entry.command} `));
     if (!def) return null;
@@ -298,9 +359,6 @@
     }
     body = stripTrailingSaveVerb(body);
     if (!body) return {command:def.command,item:null};
-    if (def.kind === 'memo') return {command:def.command,item:{
-      type:'memo',title:body,details:'',priority:'medium',dueDate:null,dueTime:null,tags:[],projectTitle:null
-    }};
     return {command:def.command,item:{
       type:'todo',title:body,details:'',priority:'medium',dueDate:addDays(dueToday,def.offset),dueTime:null,endTime:null,tags:[],projectTitle:null
     }};
@@ -364,7 +422,7 @@
     return active.filter(item => item?.type === 'todo' && !item?.done && !item?.scheduleOnly);
   }
 
-  function updateAssistantItem(items, id, patch) {
+  function updateAssistantItem(items, id, patch, updatedAt=new Date().toISOString()) {
     const source = Array.isArray(items) ? items : [];
     const target = source.find(item => item?.id === id);
     if (!target) throw new Error('수정할 항목을 찾지 못했습니다.');
@@ -384,6 +442,7 @@
     if ('allDay' in nextPatch) nextPatch.allDay = Boolean(nextPatch.allDay);
     if ('scheduleOnly' in nextPatch) nextPatch.scheduleOnly = Boolean(nextPatch.scheduleOnly);
     const effectiveType = 'type' in nextPatch ? nextPatch.type : target.type;
+    if(target.type!=='memo'&&effectiveType==='memo')throw new Error('메모는 메모 탭에서 직접 작성해 주세요.');
     const effectiveSchedule = 'scheduleOnly' in nextPatch ? nextPatch.scheduleOnly : Boolean(target.scheduleOnly);
     if (effectiveType !== 'todo' || !effectiveSchedule) {
       nextPatch.scheduleOnly = false; nextPatch.dueTime = null; nextPatch.endTime = null; nextPatch.allDay = false; nextPatch.dateUndecided = false; nextPatch.pendingMonth = null;
@@ -419,12 +478,12 @@
       }
     }
     if ('projectTitle' in nextPatch) nextPatch.projectTitle = normalizeOptional(nextPatch.projectTitle);
-    return source.map(item => item?.id === id ? { ...item, ...nextPatch } : item);
+    return source.map(item => item?.id === id ? { ...item, ...nextPatch, createdAt:item.createdAt, updatedAt:String(updatedAt||new Date().toISOString()) } : item);
   }
 
-  function toggleAssistantItem(items, id) {
+  function toggleAssistantItem(items, id, updatedAt=new Date().toISOString()) {
     const source = Array.isArray(items) ? items : [];
-    return source.map(item => item?.id === id && !item?.deletedAt ? { ...item, done: !Boolean(item.done) } : item);
+    return source.map(item => item?.id === id && !item?.deletedAt ? { ...item, done: !Boolean(item.done), createdAt:item.createdAt, updatedAt:String(updatedAt||new Date().toISOString()) } : item);
   }
 
   function softDeleteAssistantItem(items, id, deletedAt=new Date().toISOString()) {
@@ -478,7 +537,7 @@
       createdAt: meta.createdAt || new Date().toISOString()
     };
     if (kind === 'todo') return { ...common, type:'todo', dueTime:null, endTime:null, allDay:false };
-    if (kind === 'memo') return { ...common, type:'memo', dueDate:null };
+    if (kind === 'memo') throw new Error('메모는 메모 탭에서 직접 작성해 주세요.');
     if (kind === 'schedule') {
       if (!common.dueDate) throw new Error('일정 날짜를 입력해 주세요.');
       if (common.allDay) { common.dueTime=null; common.endTime=null; }
@@ -488,7 +547,7 @@
     if (kind === 'activity') return { ...common, type:'memo', dueDate:null, activityOnly:true };
     throw new Error('지원하지 않는 프로젝트 항목입니다.');
   }
-  function updateProjectRecord(items, id, patch={}) {
+  function updateProjectRecord(items, id, patch={}, updatedAt=new Date().toISOString()) {
     const source = Array.isArray(items) ? items : [];
     const target = source.find(item => item?.id === id);
     if (!target) throw new Error('수정할 프로젝트 항목을 찾지 못했습니다.');
@@ -512,7 +571,7 @@
     delete next.projectTitle;
     delete next.activityOnly;
     delete next.scheduleOnly;
-    return source.map(item => item?.id === id ? { ...item, ...next } : item);
+    return source.map(item => item?.id === id ? { ...item, ...next, createdAt:item.createdAt, updatedAt:String(updatedAt||new Date().toISOString()) } : item);
   }
 
   function parseDateMs(value) {
@@ -529,13 +588,30 @@
   }
   function sortTodos(items) {
     return [...items].sort((a,b)=>{
-      if (Boolean(a.done) !== Boolean(b.done)) return Number(a.done) - Number(b.done);
-      const dueDiff = parseDateMs(a.dueDate) - parseDateMs(b.dueDate);
-      if (Number.isFinite(dueDiff) && dueDiff !== 0) return dueDiff;
-      const timeDiff=String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));
-      if(timeDiff!==0)return timeDiff;
-      return String(a.title||'').localeCompare(String(b.title||''), 'ko');
+      if(Boolean(a.done)!==Boolean(b.done))return Number(a.done)-Number(b.done);
+      if(a.done&&b.done){
+        const completedDiff=parseTimeMs(b.updatedAt||b.createdAt)-parseTimeMs(a.updatedAt||a.createdAt);
+        if(completedDiff!==0)return completedDiff;
+      }
+      const aHas=Boolean(normalizeDueDate(a.dueDate)),bHas=Boolean(normalizeDueDate(b.dueDate));
+      if(aHas!==bHas)return aHas?-1:1;
+      if(aHas&&bHas){
+        const dueDiff=parseDateMs(a.dueDate)-parseDateMs(b.dueDate);if(dueDiff!==0)return dueDiff;
+        const timeDiff=String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));if(timeDiff!==0)return timeDiff;
+      }
+      const createdDiff=parseTimeMs(b.createdAt)-parseTimeMs(a.createdAt);
+      if(createdDiff!==0)return createdDiff;
+      return String(a.title||'').localeCompare(String(b.title||''),'ko');
     });
+  }
+  function partitionSchedules(items,today){
+    const currentDate=normalizeDueDate(today);
+    const active=(Array.isArray(items)?items:[]).filter(item=>item&&item.scheduleOnly&&!item.deletedAt&&!item.done);
+    const past=[],current=[];
+    for(const item of active){
+      if(currentDate&&normalizeDueDate(item.dueDate)&&item.dueDate<currentDate)past.push(item);else current.push(item);
+    }
+    return {current:sortSchedules(current),past:sortSchedules(past)};
   }
   function sortSchedules(items) {
     return [...items].sort((a,b)=>{
@@ -633,6 +709,9 @@
     normalizeInboxItem,
     extractNaturalTemporalSignals,
     refineNaturalInboxItem,
+    prepareNaturalInboxItems,
+    createManualMemo,
+    detectUnsupportedRecurrence,
     createClassificationFeedback,
     parseTodayScheduleCommand,
     parseLocalInboxCommand,
@@ -640,6 +719,9 @@
     filterAssistantItems,
     updateAssistantItem,
     toggleAssistantItem,
+    sortTodos,
+    sortSchedules,
+    partitionSchedules,
     softDeleteAssistantItem,
     restoreAssistantItem,
     permanentlyDeleteAssistantItem,
