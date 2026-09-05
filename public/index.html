@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v5.1.9</title>
+<title>GPT Personal Assistant v5.1.10</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -21,15 +21,14 @@
     <button type="button" class="sidebar-nav" data-nav-target="cooking">요리 프로젝트</button>
     <button type="button" class="sidebar-nav" data-nav-target="trash">휴지통</button>
   </div>
-  <button type="button" class="sidebar-nav sidebar-settings" data-nav-target="settings">설정</button>
+  <button type="button" class="sidebar-nav sidebar-settings" data-nav-target="settings"><span class="sidebar-settings-icon" aria-hidden="true">⚙</span><span>설정</span></button>
 </aside>
 <main class="app-main">
 <header>
   <div><h1 id="appTitle">GPT Personal Assistant</h1></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v5.1.9</div>
-<div id="storageBadge" class="update-connected storage-status">OneDrive 저장 상태 확인 중...</div>
+<div id="storageBadge" class="update-connected storage-status status-alert" hidden></div>
 <div class="card pad unified-inbox">
   <div class="unified-inbox-head">
     <div>
