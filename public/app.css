@@ -486,7 +486,7 @@ body.sidebar-collapsed .app-main>header{padding-left:54px}
 @media(max-width:650px){.calendar-day{min-height:78px}.calendar-toolbar-controls{width:100%}.calendar-nav-controls{margin-left:auto}.calendar-agenda-head h3{font-size:18px}}
 
 /* v5.3 Daily Assistant */
-.daily-assistant-hero{align-items:center;background:linear-gradient(135deg,#fff 0%,#f7f9ff 100%)}
+.daily-assistant-hero-slot{margin-bottom:14px}.daily-assistant-hero{position:relative;overflow:hidden;align-items:center;min-height:106px;background:linear-gradient(135deg,#F4F7FF 0%,#FFF7EC 100%);border-color:#e4e8f4}.daily-assistant-hero[hidden],.daily-assistant-hero-slot[hidden]{display:none!important}.daily-hero-copy{position:relative;z-index:2}.daily-assistant-hero h2{color:#20273a}
 .daily-assistant-hero h2{font-size:26px;letter-spacing:-.4px}.daily-date{margin-top:5px;color:var(--muted);font-size:12px;font-weight:700}
 .daily-mode-switch{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:11px;background:#f2f4f8}.daily-mode-button{padding:7px 11px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:11px;font-weight:900;cursor:pointer}.daily-mode-button.active{background:#fff;color:var(--text);box-shadow:0 1px 5px rgba(28,36,60,.09)}
 .daily-assistant-kpis .today-kpi{padding:12px 13px}.daily-assistant-kpis .today-kpi b{font-size:24px}
@@ -497,3 +497,8 @@ body.sidebar-collapsed .app-main>header{padding-left:54px}
 .daily-assistant-review{transition:none}.daily-assistant-review.is-emphasized{border-color:#cfd7ff;background:#f8f9ff}.daily-review-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.daily-review-grid>div{padding:10px;border:1px solid var(--line);border-radius:11px;background:#fff}.daily-review-grid b{display:block;font-size:18px}.daily-review-grid span{display:block;margin-top:2px;color:var(--muted);font-size:9px;font-weight:800}.daily-review-next{margin-top:8px;padding:8px 10px;border-radius:9px;background:#f4f6fb;font-size:11px;font-weight:800}
 @media(max-width:1000px){.daily-assistant-action-grid{grid-template-columns:1fr 1fr}.daily-assistant-attention{grid-column:1/-1}}
 @media(max-width:650px){.daily-assistant-action-grid{grid-template-columns:1fr}.daily-assistant-attention{grid-column:auto}.daily-review-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.daily-mode-switch{width:100%}.daily-mode-button{flex:1}}
+
+
+.daily-time-graphic{position:absolute;right:168px;top:50%;width:190px;height:96px;transform:translateY(-50%);pointer-events:none;opacity:.78;z-index:1}.daily-time-graphic svg{display:block;width:100%;height:100%;overflow:visible}.daily-time-graphic .sun{fill:#F6C76A}.daily-time-graphic .ray{fill:none;stroke:#F6C76A;stroke-width:4;stroke-linecap:round}.daily-time-graphic .horizon{fill:none;stroke:#9eb2ff;stroke-width:5;stroke-linecap:round;opacity:.52}.daily-time-graphic .orbit{fill:none;stroke:#b5c3ff;stroke-width:4;opacity:.55}.daily-time-graphic .dot{fill:#9dacff;opacity:.62}.daily-time-graphic .dot.small{opacity:.42}.daily-time-graphic .moon{fill:#8c9ee9}.daily-time-graphic .star{fill:#F6C76A}.daily-assistant-hero.evening{background:linear-gradient(135deg,#F2F4FF 0%,#FFF5EA 100%)}
+@media(max-width:850px){.daily-time-graphic{right:140px;width:150px;opacity:.55}}
+@media(max-width:650px){.daily-assistant-hero{min-height:120px;align-items:flex-start}.daily-time-graphic{right:8px;top:38px;width:118px;opacity:.42}.daily-assistant-hero .today-hero-actions{position:relative;z-index:2;margin-top:52px}}
