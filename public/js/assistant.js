@@ -1,10 +1,15 @@
 (function(root){
   const GPA=root.GPA,s=GPA.state,$=GPA.$,esc=GPA.esc;
   const typeLabels={todo:'할 일',memo:'메모',project:'프로젝트'};
+  const classificationLabels={todo:'할 일',schedule:'일정',memo:'메모',project:'프로젝트'};
+  const FEEDBACK_KEY='gpa-assistant-classification-feedback-v1';
   const priorityLabels={high:'높음',medium:'보통',low:'낮음'};
   const filterLabels={todo:'할 일',memo:'메모',project:'장기 프로젝트',done:'완료',trash:'휴지통'};
   let activeFilter='todo';
   let activeTodoMode='todo';
+
+  function loadClassificationFeedback(){try{const data=JSON.parse(localStorage.getItem(FEEDBACK_KEY)||'[]');return Array.isArray(data)?data.slice(-200):[];}catch{return [];}}
+  function recordClassificationFeedback(sourceText,from,to){if(!sourceText||from===to||!['todo','schedule'].includes(from)||!['todo','schedule'].includes(to))return;try{const list=loadClassificationFeedback();list.push(AssistantUtils.createClassificationFeedback(sourceText,from,to));localStorage.setItem(FEEDBACK_KEY,JSON.stringify(list.slice(-200)));}catch{}}
 
   function setInboxError(message=''){const el=$('inboxError');if(!el)return;el.textContent=message;el.style.display=message?'block':'none';}
   function setInboxResult(message=''){const el=$('inboxResult');if(!el)return;el.textContent=message;el.classList.toggle('show',Boolean(message));}
@@ -26,7 +31,10 @@
     try{
       const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,currentDate:GPA.today()})});
       const d=await r.json();if(!r.ok)throw new Error(d.error||'분석 실패');
-      const items=(Array.isArray(d.items)?d.items:[]).map(AssistantUtils.normalizeInboxItem).filter(Boolean);
+      const rawItems=Array.isArray(d.items)?d.items:[];const feedback=loadClassificationFeedback();
+      const items=(rawItems.length===1
+        ? [AssistantUtils.refineNaturalInboxItem(rawItems[0],text,GPA.today(),feedback)]
+        : rawItems.map(item=>AssistantUtils.normalizeInboxItem({...item,sourceText:text}))).filter(Boolean);
       if(!items.length)throw new Error('저장 가능한 항목을 찾지 못했습니다. 내용을 조금 더 구체적으로 입력해 주세요.');
       const now=new Date().toISOString();const saved=items.map(x=>({id:GPA.uid(),...x,done:false,createdAt:now}));s.assistant.unshift(...saved);
       const firstProject=(saved.find(x=>x.type==='project')?.title)||saved.find(x=>x.projectTitle)?.projectTitle||'';if(firstProject)projectHub.select(firstProject);
@@ -72,15 +80,32 @@
   }
   function saveEdit(id){
     try{
-      const before=s.assistant.find(item=>item.id===id);const patch={title:$(`edit-title-${id}`)?.value,details:$(`edit-details-${id}`)?.value,type:$(`edit-type-${id}`)?.value,priority:$(`edit-priority-${id}`)?.value,dueDate:$(`edit-due-${id}`)?.value,dueTime:$(`edit-time-${id}`)?.value,projectTitle:$(`edit-project-${id}`)?.value};if(before?.scheduleOnly){patch.endTime=$(`edit-end-${id}`)?.value;patch.allDay=Boolean($(`edit-all-day-${id}`)?.checked);if(before.dateUndecided){const year=Number($(`edit-date-year-${id}`)?.value);const month=Number($(`edit-date-month-${id}`)?.value);const day=String($(`edit-date-day-${id}`)?.value||'');if(!Number.isInteger(year)||year<1)throw new Error('올바른 연도를 입력해 주세요.');if(!Number.isInteger(month)||month<1||month>12)throw new Error('올바른 월을 선택해 주세요.');const monthKey=`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}`;if(day){patch.dueDate=`${monthKey}-${day}`;patch.pendingMonth=null;patch.dateUndecided=false;}else{patch.dueDate=null;patch.pendingMonth=monthKey;patch.dateUndecided=true;}}}s.assistant=AssistantUtils.updateAssistantItem(s.assistant,id,patch);
-      const after=s.assistant.find(item=>item.id===id);projectHub.select(after?.type==='project'?after.title:(after?.projectTitle||before?.projectTitle||projectHub.getActiveKey()));s.editingAssistantId=null;GPA.persist();
+      const before=s.assistant.find(item=>item.id===id);if(!before)throw new Error('수정할 항목을 찾지 못했습니다.');
+      const classification=$(`edit-classification-${id}`)?.value||(before.scheduleOnly?'schedule':before.type);
+      const scheduleOnly=classification==='schedule';
+      const patch={title:$(`edit-title-${id}`)?.value,details:$(`edit-details-${id}`)?.value,type:scheduleOnly?'todo':classification,scheduleOnly,priority:$(`edit-priority-${id}`)?.value,dueDate:$(`edit-due-${id}`)?.value,projectTitle:$(`edit-project-${id}`)?.value};
+      if(scheduleOnly){
+        patch.dueTime=$(`edit-time-${id}`)?.value;patch.endTime=$(`edit-end-${id}`)?.value;patch.allDay=Boolean($(`edit-all-day-${id}`)?.checked);
+        if(before.dateUndecided){
+          const year=Number($(`edit-date-year-${id}`)?.value);const month=Number($(`edit-date-month-${id}`)?.value);const day=String($(`edit-date-day-${id}`)?.value||'');
+          if(!Number.isInteger(year)||year<1)throw new Error('올바른 연도를 입력해 주세요.');if(!Number.isInteger(month)||month<1||month>12)throw new Error('올바른 월을 선택해 주세요.');
+          const monthKey=`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}`;
+          if(day){patch.dueDate=`${monthKey}-${day}`;patch.pendingMonth=null;patch.dateUndecided=false;}else{patch.dueDate=null;patch.pendingMonth=monthKey;patch.dateUndecided=true;}
+        }
+      }else{patch.dueTime=null;patch.endTime=null;patch.allDay=false;patch.dateUndecided=false;patch.pendingMonth=null;if(before.dateUndecided)patch.dueDate=null;}
+      const beforeClass=before.scheduleOnly?'schedule':before.type;
+      s.assistant=AssistantUtils.updateAssistantItem(s.assistant,id,patch);
+      const after=s.assistant.find(item=>item.id===id);const afterClass=after?.scheduleOnly?'schedule':after?.type;
+      if(beforeClass!==afterClass)recordClassificationFeedback(before.sourceText,beforeClass,afterClass);
+      projectHub.select(after?.type==='project'?after.title:(after?.projectTitle||before?.projectTitle||projectHub.getActiveKey()));s.editingAssistantId=null;GPA.persist();
     }catch(e){alert(e.message);}
   }
+  function toggleClassificationFields(id,value){const fields=$(`edit-schedule-fields-${id}`);if(fields)fields.style.display=value==='schedule'?'contents':'none';}
   function editCard(x){
-    const parts=pendingDateParts(x);
+    const parts=pendingDateParts(x);const classification=x.scheduleOnly?'schedule':x.type;
     const pendingFields=x.scheduleOnly&&x.dateUndecided?`<div class="edit-span"><label>날짜</label><div class="undecided-date-editor" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><input id="edit-date-year-${x.id}" data-undecided-date-year="${x.id}" type="number" min="1" max="9999" value="${parts.year}" style="width:96px"><span>년</span><select id="edit-date-month-${x.id}" data-undecided-date-month="${x.id}" style="width:82px">${Array.from({length:12},(_,i)=>{const m=i+1;return `<option value="${m}" ${m===parts.month?'selected':''}>${String(m).padStart(2,'0')}</option>`;}).join('')}</select><span>월</span><select id="edit-date-day-${x.id}" style="width:82px">${dayOptions(parts.year,parts.month,parts.day)}</select><span>일</span></div><small>--일로 저장하면 날짜 미정 일정으로 유지됩니다.</small></div>`:`<div><label>날짜</label><input id="edit-due-${x.id}" type="date" value="${esc(x.dueDate||'')}"></div>`;
-    const scheduleFields=x.scheduleOnly?(x.dateUndecided?'':`<div><label>시작 시간</label><input id="edit-time-${x.id}" type="time" value="${esc(x.dueTime||'')}"></div><div><label>종료 시간</label><input id="edit-end-${x.id}" type="time" value="${esc(x.endTime||'')}"></div><div class="edit-span"><label class="inline-check"><input id="edit-all-day-${x.id}" type="checkbox" ${(x.allDay||!x.dueTime)?'checked':''}> 종일 일정</label></div>`):(x.type==='todo'?'':`<div><label>시간</label><input id="edit-time-${x.id}" type="time" value="${esc(x.dueTime||'')}"></div>`);
-    return `<div class="item assistant-edit-card" data-assistant-item-id="${x.id}" style="${x.done?'opacity:.68':''}"><div class="edit-grid"><div class="edit-span"><label>내용 / 제목</label><input id="edit-title-${x.id}" value="${esc(x.title||'')}" maxlength="200"></div><div class="edit-span"><label>상세 내용</label><textarea id="edit-details-${x.id}" class="edit-details">${esc(x.details||'')}</textarea></div><div><label>분류</label><select id="edit-type-${x.id}">${Object.entries(typeLabels).map(([v,l])=>`<option value="${v}" ${x.type===v?'selected':''}>${l}</option>`).join('')}</select></div><div><label>중요도</label><select id="edit-priority-${x.id}">${Object.entries(priorityLabels).map(([v,l])=>`<option value="${v}" ${(x.priority||'medium')===v?'selected':''}>${l}</option>`).join('')}</select></div>${pendingFields}${scheduleFields}<div><label>연결 프로젝트</label><input id="edit-project-${x.id}" value="${esc(x.projectTitle||'')}" placeholder="선택 사항"></div></div><div class="actions edit-actions"><button class="small ghost" data-assistant-action="cancel">취소</button><button class="small primary" data-assistant-action="save" data-id="${x.id}">저장</button></div></div>`;
+    const scheduleFields=`<div id="edit-schedule-fields-${x.id}" style="display:${x.scheduleOnly?'contents':'none'}"><div><label>시작 시간</label><input id="edit-time-${x.id}" type="time" value="${esc(x.dueTime||'')}"></div><div><label>종료 시간</label><input id="edit-end-${x.id}" type="time" value="${esc(x.endTime||'')}"></div><div class="edit-span"><label class="inline-check"><input id="edit-all-day-${x.id}" type="checkbox" ${(x.allDay||!x.dueTime)?'checked':''}> 종일 일정</label></div></div>`;
+    return `<div class="item assistant-edit-card" data-assistant-item-id="${x.id}" style="${x.done?'opacity:.68':''}"><div class="edit-grid"><div class="edit-span"><label>내용 / 제목</label><input id="edit-title-${x.id}" value="${esc(x.title||'')}" maxlength="200"></div><div class="edit-span"><label>상세 내용</label><textarea id="edit-details-${x.id}" class="edit-details">${esc(x.details||'')}</textarea></div><div><label>분류</label><select id="edit-classification-${x.id}" data-assistant-classification="${x.id}">${Object.entries(classificationLabels).map(([v,l])=>`<option value="${v}" ${classification===v?'selected':''}>${l}</option>`).join('')}</select></div><div><label>중요도</label><select id="edit-priority-${x.id}">${Object.entries(priorityLabels).map(([v,l])=>`<option value="${v}" ${(x.priority||'medium')===v?'selected':''}>${l}</option>`).join('')}</select></div>${pendingFields}${scheduleFields}<div><label>연결 프로젝트</label><input id="edit-project-${x.id}" value="${esc(x.projectTitle||'')}" placeholder="선택 사항"></div></div><div class="actions edit-actions"><button class="small ghost" data-assistant-action="cancel">취소</button><button class="small primary" data-assistant-action="save" data-id="${x.id}">저장</button></div></div>`;
   }
   function viewCard(x){
     const tags=(Array.isArray(x.tags)?x.tags:[]).map(tag=>`<span class="chip tag-chip">#${esc(tag)}</span>`).join('');
@@ -111,7 +136,7 @@
   function bind(){
     $('analyzeInbox').addEventListener('click',analyzeInbox);$('inboxText').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyzeInbox();}});document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter);});$('assistantTodoModeTabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-item-mode]');if(tab)setTodoMode(tab.dataset.assistantItemMode);});
     $('assistantList').addEventListener('click',e=>{const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':startEdit(id);break;case'toggle':toggle(id);break;case'delete':softDelete(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;case'restore':restore(id);break;case'permanent-delete':permanentDelete(id);break;case'empty-trash':emptyTrash();break;}});
-    $('assistantList').addEventListener('change',e=>{const year=e.target.closest('[data-undecided-date-year]');const month=e.target.closest('[data-undecided-date-month]');const id=year?.dataset.undecidedDateYear||month?.dataset.undecidedDateMonth;if(id)updatePendingDayOptions(id);});
+    $('assistantList').addEventListener('change',e=>{const classification=e.target.closest('[data-assistant-classification]');if(classification)toggleClassificationFields(classification.dataset.assistantClassification,classification.value);const year=e.target.closest('[data-undecided-date-year]');const month=e.target.closest('[data-undecided-date-month]');const id=year?.dataset.undecidedDateYear||month?.dataset.undecidedDateMonth;if(id)updatePendingDayOptions(id);});
     projectHub.bind();
   }
   function openFilter(filter){if(filter==='schedule'){activeTodoMode='schedule';setActiveFilter('todo',{preserveTodoMode:true});return;}setActiveFilter(filter);}
