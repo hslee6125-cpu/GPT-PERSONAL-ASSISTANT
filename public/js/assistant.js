@@ -49,14 +49,36 @@
 
   function startEdit(id){s.editingAssistantId=id;render();requestAnimationFrame(()=>$(`edit-title-${id}`)?.focus());}
   function cancelEdit(){s.editingAssistantId=null;render();}
+  function pendingDateParts(x){
+    const raw=/^(\d{4})-(\d{2})$/.exec(String(x?.pendingMonth||''));
+    const fallback=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x?.dueDate||''));
+    const year=Number(raw?.[1]||fallback?.[1]||GPA.today().slice(0,4));
+    const month=Number(raw?.[2]||fallback?.[2]||GPA.today().slice(5,7));
+    const day=x?.dateUndecided?null:Number(fallback?.[3]||0)||null;
+    return {year,month,day};
+  }
+  function dayOptions(year,month,selectedDay=null){
+    const days=new Date(Number(year),Number(month),0).getDate();
+    return `<option value="" ${selectedDay?'':'selected'}>--</option>${Array.from({length:days},(_,i)=>{const d=i+1;return `<option value="${String(d).padStart(2,'0')}" ${d===Number(selectedDay)?'selected':''}>${String(d).padStart(2,'0')}</option>`;}).join('')}`;
+  }
+  function updatePendingDayOptions(id){
+    const year=Number($(`edit-date-year-${id}`)?.value);
+    const month=Number($(`edit-date-month-${id}`)?.value);
+    const day=$(`edit-date-day-${id}`);
+    if(!day||!Number.isInteger(year)||year<1||month<1||month>12)return;
+    const current=Number(day.value)||null;
+    const max=new Date(year,month,0).getDate();
+    day.innerHTML=dayOptions(year,month,current&&current<=max?current:null);
+  }
   function saveEdit(id){
     try{
-      const before=s.assistant.find(item=>item.id===id);const patch={title:$(`edit-title-${id}`)?.value,details:$(`edit-details-${id}`)?.value,type:$(`edit-type-${id}`)?.value,priority:$(`edit-priority-${id}`)?.value,dueDate:$(`edit-due-${id}`)?.value,dueTime:$(`edit-time-${id}`)?.value,projectTitle:$(`edit-project-${id}`)?.value};if(before?.scheduleOnly){patch.endTime=$(`edit-end-${id}`)?.value;patch.allDay=Boolean($(`edit-all-day-${id}`)?.checked);if(before.dateUndecided){patch.pendingMonth=$(`edit-pending-month-${id}`)?.value;patch.dateUndecided=true;}}s.assistant=AssistantUtils.updateAssistantItem(s.assistant,id,patch);
+      const before=s.assistant.find(item=>item.id===id);const patch={title:$(`edit-title-${id}`)?.value,details:$(`edit-details-${id}`)?.value,type:$(`edit-type-${id}`)?.value,priority:$(`edit-priority-${id}`)?.value,dueDate:$(`edit-due-${id}`)?.value,dueTime:$(`edit-time-${id}`)?.value,projectTitle:$(`edit-project-${id}`)?.value};if(before?.scheduleOnly){patch.endTime=$(`edit-end-${id}`)?.value;patch.allDay=Boolean($(`edit-all-day-${id}`)?.checked);if(before.dateUndecided){const year=Number($(`edit-date-year-${id}`)?.value);const month=Number($(`edit-date-month-${id}`)?.value);const day=String($(`edit-date-day-${id}`)?.value||'');if(!Number.isInteger(year)||year<1)throw new Error('올바른 연도를 입력해 주세요.');if(!Number.isInteger(month)||month<1||month>12)throw new Error('올바른 월을 선택해 주세요.');const monthKey=`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}`;if(day){patch.dueDate=`${monthKey}-${day}`;patch.pendingMonth=null;patch.dateUndecided=false;}else{patch.dueDate=null;patch.pendingMonth=monthKey;patch.dateUndecided=true;}}}s.assistant=AssistantUtils.updateAssistantItem(s.assistant,id,patch);
       const after=s.assistant.find(item=>item.id===id);projectHub.select(after?.type==='project'?after.title:(after?.projectTitle||before?.projectTitle||projectHub.getActiveKey()));s.editingAssistantId=null;GPA.persist();
     }catch(e){alert(e.message);}
   }
   function editCard(x){
-    const pendingFields=x.scheduleOnly&&x.dateUndecided?`<div><label>예정 월</label><input id="edit-pending-month-${x.id}" type="month" value="${esc(x.pendingMonth||'')}"></div><div><label>확정 날짜</label><input id="edit-due-${x.id}" type="date" value=""><small>날짜가 정해졌다면 예정 월 안에서 선택하세요.</small></div>`:`<div><label>날짜</label><input id="edit-due-${x.id}" type="date" value="${esc(x.dueDate||'')}"></div>`;
+    const parts=pendingDateParts(x);
+    const pendingFields=x.scheduleOnly&&x.dateUndecided?`<div class="edit-span"><label>날짜</label><div class="undecided-date-editor" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><input id="edit-date-year-${x.id}" data-undecided-date-year="${x.id}" type="number" min="1" max="9999" value="${parts.year}" style="width:96px"><span>년</span><select id="edit-date-month-${x.id}" data-undecided-date-month="${x.id}" style="width:82px">${Array.from({length:12},(_,i)=>{const m=i+1;return `<option value="${m}" ${m===parts.month?'selected':''}>${String(m).padStart(2,'0')}</option>`;}).join('')}</select><span>월</span><select id="edit-date-day-${x.id}" style="width:82px">${dayOptions(parts.year,parts.month,parts.day)}</select><span>일</span></div><small>--일로 저장하면 날짜 미정 일정으로 유지됩니다.</small></div>`:`<div><label>날짜</label><input id="edit-due-${x.id}" type="date" value="${esc(x.dueDate||'')}"></div>`;
     const scheduleFields=x.scheduleOnly?(x.dateUndecided?'':`<div><label>시작 시간</label><input id="edit-time-${x.id}" type="time" value="${esc(x.dueTime||'')}"></div><div><label>종료 시간</label><input id="edit-end-${x.id}" type="time" value="${esc(x.endTime||'')}"></div><div class="edit-span"><label class="inline-check"><input id="edit-all-day-${x.id}" type="checkbox" ${(x.allDay||!x.dueTime)?'checked':''}> 종일 일정</label></div>`):(x.type==='todo'?'':`<div><label>시간</label><input id="edit-time-${x.id}" type="time" value="${esc(x.dueTime||'')}"></div>`);
     return `<div class="item assistant-edit-card" data-assistant-item-id="${x.id}" style="${x.done?'opacity:.68':''}"><div class="edit-grid"><div class="edit-span"><label>내용 / 제목</label><input id="edit-title-${x.id}" value="${esc(x.title||'')}" maxlength="200"></div><div class="edit-span"><label>상세 내용</label><textarea id="edit-details-${x.id}" class="edit-details">${esc(x.details||'')}</textarea></div><div><label>분류</label><select id="edit-type-${x.id}">${Object.entries(typeLabels).map(([v,l])=>`<option value="${v}" ${x.type===v?'selected':''}>${l}</option>`).join('')}</select></div><div><label>중요도</label><select id="edit-priority-${x.id}">${Object.entries(priorityLabels).map(([v,l])=>`<option value="${v}" ${(x.priority||'medium')===v?'selected':''}>${l}</option>`).join('')}</select></div>${pendingFields}${scheduleFields}<div><label>연결 프로젝트</label><input id="edit-project-${x.id}" value="${esc(x.projectTitle||'')}" placeholder="선택 사항"></div></div><div class="actions edit-actions"><button class="small ghost" data-assistant-action="cancel">취소</button><button class="small primary" data-assistant-action="save" data-id="${x.id}">저장</button></div></div>`;
   }
@@ -89,6 +111,7 @@
   function bind(){
     $('analyzeInbox').addEventListener('click',analyzeInbox);$('inboxText').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyzeInbox();}});document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter);});$('assistantTodoModeTabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-item-mode]');if(tab)setTodoMode(tab.dataset.assistantItemMode);});
     $('assistantList').addEventListener('click',e=>{const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':startEdit(id);break;case'toggle':toggle(id);break;case'delete':softDelete(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;case'restore':restore(id);break;case'permanent-delete':permanentDelete(id);break;case'empty-trash':emptyTrash();break;}});
+    $('assistantList').addEventListener('change',e=>{const year=e.target.closest('[data-undecided-date-year]');const month=e.target.closest('[data-undecided-date-month]');const id=year?.dataset.undecidedDateYear||month?.dataset.undecidedDateMonth;if(id)updatePendingDayOptions(id);});
     projectHub.bind();
   }
   function openFilter(filter){if(filter==='schedule'){activeTodoMode='schedule';setActiveFilter('todo',{preserveTodoMode:true});return;}setActiveFilter(filter);}
