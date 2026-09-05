@@ -16,6 +16,7 @@
   function empty(text){return`<div class="empty compact">${esc(text)}</div>`;}
   function context(){return D.buildDailyContext({assistant:s.assistant,today:GPA.today(),now:nowTime()});}
   function timeText(item){if(!item)return'';if(item.allDay)return'종일';return item.dueTime||'시간 미정';}
+  function priorityBadge(item){const priority=['high','medium','low'].includes(item?.priority)?item.priority:'medium';const labels={high:'높음',medium:'보통',low:'낮음'};return`<span class="today-priority-badge ${priority}">${labels[priority]}</span>`;}
   function modeButton(mode,label){const active=(dailyMode||defaultMode())===mode;return`<button type="button" class="daily-mode-button ${active?'active':''}" data-daily-mode="${mode}" aria-pressed="${active?'true':'false'}">${label}</button>`;}
   function todoActionControl(item){
     const open=todoActionMenuId===item.id;
@@ -29,7 +30,7 @@
   }
   function todoRows(items,{overdue=false}={}){
     if(!items.length)return empty(overdue?'기한이 지난 할 일이 없습니다.':'오늘 할 일이 없습니다.');
-    return`<div class="today-list">${items.map(item=>`<div class="today-row"><span class="today-complete-cell"><button type="button" class="mini-check" data-dashboard-toggle="${item.id}" aria-label="완료"></button></span><button type="button" class="today-row-main" data-dashboard-assistant="todo"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}</button><span class="today-row-meta">${overdue?`<span class="today-overdue">D+${item.overdueDays}</span>`:`<span class="today-meta-date today-date-badge">오늘</span>${todoActionControl(item)}`}</span></div>`).join('')}</div>`;
+    return`<div class="today-list">${items.map(item=>`<div class="today-row"><span class="today-complete-cell"><button type="button" class="mini-check" data-dashboard-toggle="${item.id}" aria-label="완료"></button></span><button type="button" class="today-row-main" data-dashboard-assistant="todo"><b>${esc(item.title)}</b>${item.projectTitle?`<span>↳ ${esc(item.projectTitle)}</span>`:''}</button><span class="today-row-meta">${priorityBadge(item)}${overdue?`<span class="today-overdue">D+${item.overdueDays}</span>`:`<span class="today-meta-date today-date-badge">오늘</span>${todoActionControl(item)}`}</span></div>`).join('')}</div>`;
   }
   function scheduleRows(items){
     if(!items.length)return empty('오늘 일정이 없습니다.');
@@ -50,7 +51,6 @@
     const hero=$('dailyAssistantHero'),part=dayPart();
     if(hero)hero.innerHTML=`<section class="today-hero daily-assistant-hero ${part}"><div class="daily-hero-copy"><h2>${esc(greeting())}</h2><div class="daily-date">${esc(weekdayLabel(c.today))}</div></div>${timeGraphic(part)}<div class="today-hero-actions"><div class="daily-mode-switch">${modeButton('day','오늘')}${modeButton('review','리뷰')}</div><div class="today-quick-menu-wrap"><button type="button" class="ghost small" data-dashboard-quick-menu-toggle aria-expanded="${quickMenuOpen?'true':'false'}">+ 빠른 추가 ▾</button>${quickMenuOpen?`<div class="today-quick-menu" role="menu"><button type="button" data-dashboard-quick-add="todo">할 일 추가</button><button type="button" data-dashboard-quick-add="memo">메모 추가</button><button type="button" data-dashboard-quick-add="schedule">일정 추가</button></div>`:''}</div></div></section>`;
     box.innerHTML=`${quickEditor()}
-    <div class="today-kpis daily-assistant-kpis"><div class="today-kpi"><b>${c.metrics.todaySchedules}</b><span>오늘 일정</span></div><div class="today-kpi"><b>${c.metrics.todayTodos}</b><span>오늘 할 일</span></div><div class="today-kpi"><b>${c.metrics.important}</b><span>중요 항목</span></div><div class="today-kpi ${c.metrics.unresolved?'warn':''}"><b>${c.metrics.unresolved}</b><span>미처리</span></div></div>
     ${briefHtml(c,mode)}
     ${c.nextSchedule?`<section class="daily-next card pad"><span>다음 일정</span><b>${esc(timeText(c.nextSchedule))} · ${esc(c.nextSchedule.title)}</b></section>`:''}
     <div class="daily-assistant-action-grid"><section class="card pad daily-action-card"><div class="today-card-head"><h3>오늘 일정</h3><span class="today-section-count">${c.todaySchedules.length}개</span></div>${scheduleRows(c.todaySchedules)}</section><section class="card pad daily-action-card"><div class="today-card-head"><h3>오늘 할 일</h3><span class="today-section-count">${c.todayTodos.length}개</span></div>${todoRows(c.todayTodos)}</section><section class="card pad daily-action-card daily-assistant-attention"><div class="today-card-head"><h3>주의 필요</h3><span class="today-section-count">${c.overdueTodos.length}개</span></div>${todoRows(c.overdueTodos,{overdue:true})}</section></div>
@@ -67,10 +67,9 @@
       if(briefState.signature!==signature)return;briefState={signature,status:'ready',sentences:Array.isArray(data.sentences)?data.sentences.slice(0,4):null,error:null};render();
     }catch(e){if(briefState.signature!==signature)return;briefState={signature,status:'error',sentences:D.buildFallbackBrief(c,mode),error:e.message};render();}
   }
-  function compactContextForAI(c){return{today:c.today,nowTime:c.nowTime,metrics:c.metrics,todaySchedules:c.todaySchedules.map(x=>({title:x.title,dueTime:x.dueTime||null,endTime:x.endTime||null,allDay:Boolean(x.allDay)})),todayTodos:c.todayTodos.map(x=>({title:x.title})),overdueTodos:c.overdueTodos.map(x=>({title:x.title,overdueDays:x.overdueDays})),nextSchedule:c.nextSchedule?{title:c.nextSchedule.title,dueTime:c.nextSchedule.dueTime||null}:null,openTimeWindows:c.openTimeWindows.slice(0,3),review:{completedTodos:c.review.completedTodos,unfinishedTodos:c.review.unfinishedTodos,passedSchedules:c.review.passedSchedules,tomorrowFirstSchedule:c.tomorrowFirstSchedule?{title:c.tomorrowFirstSchedule.title,dueTime:c.tomorrowFirstSchedule.dueTime||null,allDay:Boolean(c.tomorrowFirstSchedule.allDay)}:null}};}
+  function compactContextForAI(c){return{today:c.today,nowTime:c.nowTime,metrics:c.metrics,todaySchedules:c.todaySchedules.map(x=>({title:x.title,dueTime:x.dueTime||null,endTime:x.endTime||null,allDay:Boolean(x.allDay)})),todayTodos:c.todayTodos.map(x=>({title:x.title,dueDate:x.dueDate||null,dueTime:x.dueTime||null,priority:x.priority||'medium',overdue:false})),overdueTodos:c.overdueTodos.map(x=>({title:x.title,dueDate:x.dueDate||null,dueTime:x.dueTime||null,priority:x.priority||'medium',overdue:true,overdueDays:x.overdueDays})),nextSchedule:c.nextSchedule?{title:c.nextSchedule.title,dueTime:c.nextSchedule.dueTime||null}:null,openTimeWindows:c.openTimeWindows.slice(0,3),review:{completedTodos:c.review.completedTodos,unfinishedTodos:c.review.unfinishedTodos,passedSchedules:c.review.passedSchedules,tomorrowFirstSchedule:c.tomorrowFirstSchedule?{title:c.tomorrowFirstSchedule.title,dueTime:c.tomorrowFirstSchedule.dueTime||null,allDay:Boolean(c.tomorrowFirstSchedule.allDay)}:null}};}
   function saveQuick(){const error=$('dashboardQuickError');try{const item=DashboardUtils.createQuickItem(quickEditorKind,{title:$('dashboardQuickTitle')?.value,details:$('dashboardQuickDetails')?.value,dueDate:$('dashboardQuickDate')?.value,dueTime:$('dashboardQuickTime')?.value,projectTitle:$('dashboardQuickProject')?.value},{id:GPA.uid(),createdAt:new Date().toISOString()});s.assistant.unshift(item);quickEditorKind=null;GPA.persist('dashboard-quick-add');}catch(e){if(error){error.textContent=e.message;error.style.display='block';}else alert(e.message);}}
-  function bind(){
-    $('todayDashboard')?.addEventListener('click',e=>{
+  function handleDashboardClick(e){
       const mode=e.target.closest('[data-daily-mode]');if(mode){dailyMode=mode.dataset.dailyMode;briefState={signature:null,status:'idle',sentences:null,error:null};render();return;}
       const menuToggle=e.target.closest('[data-dashboard-quick-menu-toggle]');if(menuToggle){quickMenuOpen=!quickMenuOpen;render();return;}
       const quick=e.target.closest('[data-dashboard-quick-add]');if(quick){quickEditorKind=quick.dataset.dashboardQuickAdd;quickMenuOpen=false;render();requestAnimationFrame(()=>$('dashboardQuickTitle')?.focus());return;}
@@ -82,7 +81,10 @@
       const toggle=e.target.closest('[data-dashboard-toggle]');if(toggle){const item=s.assistant.find(x=>x.id===toggle.dataset.dashboardToggle&&!x.deletedAt);if(item){s.assistant=AssistantUtils.toggleAssistantItem(s.assistant,item.id);briefState={signature:null,status:'idle',sentences:null,error:null};GPA.persist('dashboard-toggle');}return;}
       const cal=e.target.closest('[data-dashboard-calendar-item]');if(cal){GPA.showView('calendar');GPA.calendar.openDate(cal.dataset.dashboardCalendarDate);GPA.calendar.openEditor(cal.dataset.dashboardCalendarItem,cal.dataset.dashboardCalendarOccurrence||'');return;}
       const assistant=e.target.closest('[data-dashboard-assistant]');if(assistant){GPA.showView('assistant');GPA.assistant.openFilter(assistant.dataset.dashboardAssistant);return;}
-    });
+  }
+  function bind(){
+    $('todayDashboard')?.addEventListener('click',handleDashboardClick);
+    $('dailyAssistantHero')?.addEventListener('click',handleDashboardClick);
     document.addEventListener('click',e=>{let changed=false;if(quickMenuOpen&&!e.target.closest?.('[data-dashboard-quick-menu-toggle], .today-quick-menu')){quickMenuOpen=false;changed=true;}if(todoActionMenuId&&!e.target.closest?.('[data-dashboard-todo-actions], .today-todo-action-menu')){todoActionMenuId=null;todoActionMode=null;changed=true;}if(changed)render();});
     document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(quickMenuOpen||todoActionMenuId){quickMenuOpen=false;todoActionMenuId=null;todoActionMode=null;render();}});
   }
