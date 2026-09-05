@@ -17,6 +17,12 @@
     const date = new Date(Date.UTC(year, month - 1, day));
     return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? text : null;
   }
+  function normalizeDueMonth(value) {
+    const text = String(value ?? '').trim();
+    if (!/^\d{4}-\d{2}$/.test(text)) return null;
+    const [year, month] = text.split('-').map(Number);
+    return year >= 1 && month >= 1 && month <= 12 ? text : null;
+  }
   function normalizeDueTime(value) {
     const text = String(value ?? '').trim();
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(text)) return null;
@@ -125,11 +131,22 @@
 
     const monthOnly = text.match(/^\/(?:((\d{4})년)?(\d{1,2})월)(?:\s+(.*))?$/);
     if (monthOnly) {
-      const yearPrefix = monthOnly[2] ? `${monthOnly[2]}년` : '';
+      const year = monthOnly[2] ? Number(monthOnly[2]) : currentYear;
       const month = Number(monthOnly[3]);
       const command = `/${monthOnly[1]}`;
       if (month < 1 || month > 12) return {command,item:null,error:'존재하지 않는 날짜입니다.'};
-      return {command,item:null,error:`정확한 날짜가 필요합니다. 예: /${yearPrefix}${month}월9일 1400-1600 철수랑 점심약속`};
+      const pendingMonth = `${year}-${String(month).padStart(2,'0')}`;
+      const currentMonth = current.slice(0,7);
+      if (pendingMonth < currentMonth) return {command,item:null,error:monthOnly[2]?`${year}년 ${month}월은 이미 지난 달입니다.`:`${year}년 ${month}월은 이미 지난 달입니다. 연도를 함께 입력해 주세요.`};
+      const body = String(monthOnly[4] || '').trim();
+      if (!body) return {command,item:null,error:`${command} 뒤에 내용을 입력해 주세요.`};
+      const parsed = parseScheduleBody(body);
+      if (!parsed) return {command,item:null,error:`${command} 뒤에 내용을 입력해 주세요.`};
+      if (parsed.dueTime || parsed.endTime) return {command,item:null,error:`날짜 미정 일정에는 시간을 지정할 수 없습니다. 날짜까지 입력해 주세요. 예: /${month}월9일 1400-1600 ${parsed.title}`};
+      return {command,error:null,item:{
+        type:'todo',title:parsed.title,details:'',priority:'medium',dueDate:null,dueTime:null,endTime:null,allDay:true,
+        tags:[],projectTitle:null,scheduleOnly:true,dateUndecided:true,pendingMonth
+      }};
     }
     return null;
   }
@@ -225,17 +242,39 @@
     if ('type' in nextPatch && !TYPES.has(nextPatch.type)) throw new Error('올바른 분류를 선택해 주세요.');
     if ('priority' in nextPatch && !PRIORITIES.has(nextPatch.priority)) throw new Error('올바른 중요도를 선택해 주세요.');
     if ('dueDate' in nextPatch) nextPatch.dueDate = normalizeDueDate(nextPatch.dueDate);
+    if ('pendingMonth' in nextPatch) nextPatch.pendingMonth = normalizeDueMonth(nextPatch.pendingMonth);
+    if ('dateUndecided' in nextPatch) nextPatch.dateUndecided = Boolean(nextPatch.dateUndecided);
     if ('dueTime' in nextPatch) nextPatch.dueTime = normalizeDueTime(nextPatch.dueTime);
     if ('endTime' in nextPatch) nextPatch.endTime = normalizeDueTime(nextPatch.endTime);
     if ('allDay' in nextPatch) nextPatch.allDay = Boolean(nextPatch.allDay);
     if (target.type === 'todo' && !target.scheduleOnly) { nextPatch.dueTime = null; nextPatch.endTime = null; nextPatch.allDay = false; }
     if (target.scheduleOnly) {
-      const allDay = 'allDay' in nextPatch ? nextPatch.allDay : Boolean(target.allDay);
-      if (allDay) { nextPatch.dueTime = null; nextPatch.endTime = null; }
-      else {
-        const start = 'dueTime' in nextPatch ? nextPatch.dueTime : normalizeDueTime(target.dueTime);
-        const end = 'endTime' in nextPatch ? nextPatch.endTime : normalizeDueTime(target.endTime);
-        if (start && end && end <= start) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
+      const pending = 'dateUndecided' in nextPatch ? nextPatch.dateUndecided : Boolean(target.dateUndecided);
+      const dueDate = 'dueDate' in nextPatch ? nextPatch.dueDate : normalizeDueDate(target.dueDate);
+      const pendingMonth = 'pendingMonth' in nextPatch ? nextPatch.pendingMonth : normalizeDueMonth(target.pendingMonth);
+      if (pending) {
+        if (!pendingMonth) throw new Error('예정 월을 입력해 주세요.');
+        if (dueDate) {
+          if (!dueDate.startsWith(`${pendingMonth}-`)) throw new Error('확정 날짜는 예정 월 안에서 선택해 주세요.');
+          nextPatch.dateUndecided = false;
+          nextPatch.pendingMonth = null;
+          nextPatch.allDay = true;
+          nextPatch.dueTime = null;
+          nextPatch.endTime = null;
+        } else {
+          nextPatch.dueDate = null;
+          nextPatch.dueTime = null;
+          nextPatch.endTime = null;
+          nextPatch.allDay = true;
+        }
+      } else {
+        const allDay = 'allDay' in nextPatch ? nextPatch.allDay : Boolean(target.allDay);
+        if (allDay) { nextPatch.dueTime = null; nextPatch.endTime = null; }
+        else {
+          const start = 'dueTime' in nextPatch ? nextPatch.dueTime : normalizeDueTime(target.dueTime);
+          const end = 'endTime' in nextPatch ? nextPatch.endTime : normalizeDueTime(target.endTime);
+          if (start && end && end <= start) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
+        }
       }
     }
     if ('projectTitle' in nextPatch) nextPatch.projectTitle = normalizeOptional(nextPatch.projectTitle);
