@@ -114,8 +114,15 @@
     if(!source)return null;
     if(/(?:격주|매\s*\d+\s*(?:일|주|개월|달|년)\s*마다|\d+\s*(?:일|주|개월|달|년)\s*마다|매월\s*(?:첫째|둘째|셋째|넷째|마지막)|평일마다)/.test(source))return null;
     if(/(?:^|\s|,)매일(?=\s|,|$)/.test(source))return {type:'daily',interval:1};
-    const weekly=source.match(/(?:^|\s|,)매주(?:\s+(일요일|월요일|화요일|수요일|목요일|금요일|토요일))?(?=\s|,|$)/);
-    if(weekly)return {type:'weekly',interval:1,weekday:weekly[1]?WEEKDAYS[weekly[1]]:null};
+    const weeklyStart=source.match(/(?:^|\s|,)매주(?=\s|,|$)/);
+    if(weeklyStart){
+      const tail=source.slice(weeklyStart.index+weeklyStart[0].length);
+      const names=[...tail.matchAll(/(?:^|[\s,]|과\s*|와\s*)(일요일|월요일|화요일|수요일|목요일|금요일|토요일)(?=\s|,|과|와|$)/g)].map(m=>m[1]);
+      const days=[...new Set(names.map(n=>WEEKDAYS[n]))];
+      if(days.length>1)return {type:'weekly',interval:1,weekdays:days};
+      if(days.length===1)return {type:'weekly',interval:1,weekday:days[0]};
+      return {type:'weekly',interval:1,weekday:null};
+    }
     const monthly=source.match(/(?:^|\s|,)(?:매월|매달)(?:\s+(\d{1,2})일)?(?=\s|,|$)/);
     if(monthly)return {type:'monthly',interval:1,dayOfMonth:monthly[1]?Number(monthly[1]):null};
     const yearly=source.match(/(?:^|\s|,)매년(?:\s+(\d{1,2})월\s*(\d{1,2})일)?(?=\s|,|$)/);
@@ -287,7 +294,7 @@
       if(inputAnalysis.repeat){
         const repeat={...inputAnalysis.repeat};
         const date=normalized.dueDate||sig.dueDate||today;
-        if(repeat.type==='weekly'&&repeat.weekday==null&&date){const [y,m,d]=String(date).split('-').map(Number);repeat.weekday=new Date(Date.UTC(y,m-1,d)).getUTCDay();}
+        if(repeat.type==='weekly'&&!Array.isArray(repeat.weekdays)&&repeat.weekday==null&&date){const [y,m,d]=String(date).split('-').map(Number);repeat.weekday=new Date(Date.UTC(y,m-1,d)).getUTCDay();}
         if(repeat.type==='monthly'&&!repeat.dayOfMonth&&date)repeat.dayOfMonth=Number(String(date).slice(8,10));
         if(repeat.type==='yearly'&&(!repeat.month||!repeat.day)&&date){repeat.month=Number(String(date).slice(5,7));repeat.day=Number(String(date).slice(8,10));}
         normalized.repeat=repeat;
