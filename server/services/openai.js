@@ -27,6 +27,8 @@ function buildDailyBriefInstructions(mode='day') {
 입력은 앱이 이미 계산한 구조화된 사실 데이터다.
 - 입력에 없는 일정, 할 일, 사람, 장소, 숫자, 중요도를 추측하거나 만들어내지 않는다.
 - 일정 수와 할 일 수는 입력 metrics 값을 그대로 따른다.
+- 할 일의 중요도는 각 todo의 priority 필드만 사실로 사용한다. priority가 high인 경우에만 중요도가 높다고 표현할 수 있다.
+- priority가 medium 또는 low인 할 일을 중요도가 높다고 표현하거나, metrics 값을 근거로 개별 할 일의 중요도를 추론하지 않는다.
 - ${review?'저녁 Daily Review':'오늘 Daily Brief'} 문장만 작성한다.
 - 짧고 자연스러운 한국어 문장 1~${review?3:4}개로 작성한다.
 - 행동 제안은 openTimeWindows처럼 입력에 근거가 있을 때만 한다.
