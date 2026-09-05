@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v5.2.9</title>
+<title>GPT Personal Assistant v5.2.10</title>
 <link rel="stylesheet" href="/app.css">
 <link rel="stylesheet" href="/calendar-v52.css">
 </head>
@@ -26,7 +26,7 @@
 </aside>
 <main class="app-main">
 <header>
-  <div><h1 id="appTitle">GPT Personal Assistant</h1></div>
+  <div><h1 id="appTitle" role="button" tabindex="0" aria-label="오늘 홈으로 이동">GPT Personal Assistant</h1></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
 <div id="storageBadge" class="update-connected storage-status status-alert" hidden></div>
@@ -271,5 +271,22 @@
 <script src="/js/navigation.js"></script>
 <script src="/js/calendar.js"></script>
 <script src="/js/main.js"></script>
+<script>
+(() => {
+  const appTitle = document.getElementById('appTitle');
+  if (!appTitle) return;
+  const goTodayHome = () => {
+    const todayNav = document.querySelector('[data-nav-target="today"]');
+    if (todayNav) todayNav.click();
+  };
+  appTitle.addEventListener('click', goTodayHome);
+  appTitle.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      goTodayHome();
+    }
+  });
+})();
+</script>
 </body>
 </html>
