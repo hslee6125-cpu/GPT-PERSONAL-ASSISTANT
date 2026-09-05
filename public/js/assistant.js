@@ -12,6 +12,17 @@
   function loadClassificationFeedback(){try{const data=JSON.parse(localStorage.getItem(FEEDBACK_KEY)||'[]');return Array.isArray(data)?data.slice(-200):[];}catch{return [];}}
   function recordClassificationFeedback(sourceText,from,to){if(!sourceText||from===to||!['todo','schedule'].includes(from)||!['todo','schedule'].includes(to))return;try{const list=loadClassificationFeedback();list.push(AssistantUtils.createClassificationFeedback(sourceText,from,to));localStorage.setItem(FEEDBACK_KEY,JSON.stringify(list.slice(-200)));}catch{}}
   function resetClassificationLearning(){if(!confirm('분류 학습 기록을 모두 초기화할까요? 이 작업은 되돌릴 수 없습니다.'))return;try{localStorage.removeItem(FEEDBACK_KEY);alert('분류 학습 기록을 초기화했습니다.');}catch{alert('분류 학습 기록을 초기화하지 못했습니다.');}}
+  function resetAssistantData(){
+    const first='모든 할 일, 일정, 날짜 미정 일정, 메모, 프로젝트, 휴지통, 완료 항목과 분류 학습 기록이 삭제됩니다. 앱 설정과 실행 설정은 유지됩니다. 계속할까요?';
+    if(!confirm(first))return;
+    if(!confirm('정말 모든 Assistant 데이터를 초기화할까요? 이 작업은 되돌릴 수 없습니다.'))return;
+    try{
+      if(undoTimer){clearTimeout(undoTimer);undoTimer=null;}document.getElementById('assistantUndoToast')?.remove();
+      s.assistant=[];s.editingAssistantId=null;localStorage.removeItem(FEEDBACK_KEY);
+      GPA.persist('reset-assistant-data');setActiveFilter('todo');
+      alert('모든 Assistant 데이터가 초기화되었습니다.');
+    }catch{alert('전체 데이터 초기화에 실패했습니다.');}
+  }
   function addManualMemo(){try{const title=$('memoManualTitle')?.value||'';const details=$('memoManualDetails')?.value||'';const memo=AssistantUtils.createManualMemo(title,details,{id:GPA.uid(),createdAt:new Date().toISOString()});s.assistant.unshift(memo);GPA.persist('manual-memo');}catch(e){alert(e.message);}}
 
   function setInboxError(message=''){const el=$('inboxError');if(!el)return;el.textContent=message;el.style.display=message?'block':'none';}
@@ -161,6 +172,7 @@
     $('assistantList').addEventListener('click',e=>{const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':startEdit(id);break;case'toggle':toggle(id);break;case'delete':softDelete(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;case'restore':restore(id);break;case'permanent-delete':permanentDelete(id);break;case'empty-trash':emptyTrash();break;case'add-memo':addManualMemo();break;}});
     $('assistantList').addEventListener('change',e=>{const classification=e.target.closest('[data-assistant-classification]');if(classification)toggleClassificationFields(classification.dataset.assistantClassification,classification.value);const year=e.target.closest('[data-undecided-date-year]');const month=e.target.closest('[data-undecided-date-month]');const id=year?.dataset.undecidedDateYear||month?.dataset.undecidedDateMonth;if(id)updatePendingDayOptions(id);});
     $('resetClassificationLearning')?.addEventListener('click',resetClassificationLearning);
+    $('resetAssistantData')?.addEventListener('click',resetAssistantData);
     projectHub.bind();
   }
   function openFilter(filter){if(filter==='schedule'){activeTodoMode='schedule';setActiveFilter('todo',{preserveTodoMode:true});return;}setActiveFilter(filter);}
