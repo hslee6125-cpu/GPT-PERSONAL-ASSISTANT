@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v5.1.17</title>
+<title>GPT Personal Assistant v5.1.18</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -218,6 +218,11 @@
       <div class="system-settings-body">
         <div class="system-settings-head"><div class="notice">할 일 ↔ 일정 수정 이력에서 학습한 개인 분류 가중치를 관리합니다.</div></div>
         <div class="system-settings-actions"><div class="notice">초기화하면 지금까지 누적된 분류 학습 기록이 삭제됩니다.</div><button id="resetClassificationLearning" type="button" class="small ghost danger">분류 학습 기록 초기화</button></div>
+      </div>
+      <div class="settings-section-title" style="margin-top:18px">위험 구역</div>
+      <div class="system-settings-body">
+        <div class="system-settings-head"><div class="notice">테스트 중 생성한 Assistant 데이터를 처음 상태로 되돌립니다. 실행 설정과 앱 환경 설정은 유지됩니다.</div></div>
+        <div class="system-settings-actions"><div class="notice">할 일, 일정, 날짜 미정 일정, 메모, 프로젝트, 완료 항목, 휴지통, 분류 학습 기록이 모두 삭제됩니다.</div><button id="resetAssistantData" type="button" class="small ghost danger">전체 데이터 초기화</button></div>
       </div>
       <div class="settings-info-grid">
         <section class="settings-info-card">
