@@ -1,18 +1,34 @@
 {
-  "version": "5.1.11",
+  "version": "5.1.12",
   "runNpmInstall": false,
   "files": [
-    {
-      "path": "public/app.css",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"
-    },
     {
       "path": "public/index.html",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
     },
     {
-      "path": "public/js/calendar.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/calendar.js"
+      "path": "public/js/assistant-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-utils.js"
+    },
+    {
+      "path": "public/js/assistant.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant.js"
+    },
+    {
+      "path": "public/js/assistant-projects.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-projects.js"
+    },
+    {
+      "path": "public/js/dashboard-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard-utils.js"
+    },
+    {
+      "path": "public/js/dashboard.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard.js"
+    },
+    {
+      "path": "public/js/calendar-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/calendar-utils.js"
     }
   ]
 }
