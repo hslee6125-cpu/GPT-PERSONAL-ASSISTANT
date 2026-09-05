@@ -3,13 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GPT Personal Assistant v5.1.7</title>
+<title>GPT Personal Assistant v5.1.8</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
 <div class="wrap">
 <div class="app-shell">
+<button type="button" id="sidebarMenuButton" class="sidebar-menu-button" aria-controls="appSidebar" aria-expanded="false" aria-label="메뉴 열기">≡</button>
+<div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
 <aside id="appSidebar" class="app-sidebar" aria-label="주요 메뉴">
+  <div class="sidebar-topbar"><button type="button" id="sidebarCloseButton" class="sidebar-close-button" aria-label="사이드바 숨기기">×</button></div>
   <div class="sidebar-primary">
     <button type="button" class="sidebar-nav active" data-nav-target="today">오늘</button>
     <button type="button" class="sidebar-nav" data-nav-target="calendar">캘린더 / 일정</button>
@@ -25,7 +28,7 @@
   <div><h1 id="appTitle">GPT Personal Assistant</h1></div>
   <div id="apiBadge" class="badge">API 확인 중</div>
 </header>
-<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v5.1.7</div>
+<div class="update-connected">✓ GitHub 자동업데이트 정상 연결 · v5.1.8</div>
 <div id="storageBadge" class="update-connected storage-status">OneDrive 저장 상태 확인 중...</div>
 <div class="card pad unified-inbox">
   <div class="unified-inbox-head">
