@@ -446,3 +446,21 @@ button{border:0;border-radius:11px;padding:10px 13px;font-weight:800;cursor:poin
 .calendar-week-layout{grid-template-columns:minmax(0,3fr) minmax(250px,1fr)}.calendar-week-x-scroll{overflow-x:hidden;min-width:0}.calendar-week-x-inner{min-width:0}.calendar-week-header{grid-template-columns:56px repeat(7,minmax(0,1fr));min-width:0}.calendar-week-time-grid{grid-template-columns:56px repeat(7,minmax(0,1fr));min-width:0}.calendar-week-all-day{grid-template-columns:56px repeat(7,minmax(0,1fr));min-width:0}.calendar-week-scroll{overflow-y:auto;overflow-x:hidden}.calendar-week-event span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.calendar-week-event b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;overflow:hidden}
 @media(max-width:900px){.calendar-week-x-scroll{overflow-x:auto}.calendar-week-x-inner{min-width:760px}.calendar-week-header,.calendar-week-time-grid,.calendar-week-all-day{min-width:0}.calendar-week-scroll{overflow-y:auto;overflow-x:hidden}}
 @media(max-width:650px){.calendar-week-x-inner{min-width:700px}.calendar-entry-marker{width:4px;height:4px}.calendar-entry-time{display:none}.calendar-agenda-row{grid-template-columns:76px minmax(0,1fr)}}
+
+/* v5.1.8 collapsible overlay sidebar */
+.sidebar-menu-button{display:none;position:fixed;left:14px;top:14px;z-index:70;width:42px;height:42px;padding:0;border:1px solid var(--line);border-radius:12px;background:#fff;color:#4f5662;font-size:24px;font-weight:900;line-height:1;box-shadow:0 8px 22px rgba(33,40,65,.12);cursor:pointer}
+.sidebar-topbar{display:flex;justify-content:flex-end;margin:-4px -4px 2px}.sidebar-close-button{width:32px;height:32px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}.sidebar-close-button:hover{background:#f4f6ff;color:var(--text)}
+.sidebar-backdrop{display:none;position:fixed;inset:0;z-index:59;background:rgba(20,24,34,.28);backdrop-filter:blur(1px)}
+body.sidebar-collapsed .app-sidebar{display:none}
+body.sidebar-collapsed .sidebar-menu-button{display:inline-flex;align-items:center;justify-content:center}
+body.sidebar-overlay-open{overflow:hidden}
+body.sidebar-overlay-open .sidebar-backdrop{display:block}
+body.sidebar-overlay-open .app-sidebar{display:flex;position:fixed;left:14px;top:14px;bottom:14px;z-index:60;width:210px;height:auto;margin:0;box-shadow:0 18px 48px rgba(25,31,52,.22);animation:sidebarOverlayIn .16s ease-out}
+body.sidebar-overlay-open .sidebar-menu-button{display:none}
+@keyframes sidebarOverlayIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:900px){
+  .app-shell{display:block}.app-sidebar{display:none;position:fixed;width:220px;height:auto;overflow:visible;margin:0;padding:14px;flex-direction:column;align-items:stretch}.sidebar-primary{display:flex;flex-direction:column;gap:5px}.sidebar-nav{width:100%;white-space:normal}.sidebar-settings{margin-top:auto;margin-left:0}.app-main{width:100%}.sidebar-menu-button{display:inline-flex;align-items:center;justify-content:center}
+  body.sidebar-overlay-open .app-sidebar{left:10px;top:10px;bottom:10px;width:min(82vw,260px)}
+}
+body.sidebar-collapsed .app-main>header{padding-left:54px}
+@media(max-width:900px){body.sidebar-collapsed .app-main>header{padding-left:52px}}
