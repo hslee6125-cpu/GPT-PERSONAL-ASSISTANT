@@ -109,11 +109,24 @@
   const SCHEDULE_KEYWORDS = ['약속','미팅','회의','예약','진료','상담','식사','점심','저녁','면접','수업','미용실','공연','비행기','기차'];
   const TODO_KEYWORDS = ['해야','하기','구매','신청','정리','준비','확인','보내기','전화하기','예약하기','제출','결제','갱신','작성','잡기'];
 
-  function detectUnsupportedRecurrence(text) {
+  function parseSupportedRecurrence(text) {
     const source=String(text||'').trim();
     if(!source)return null;
-    const match=source.match(/(?:^|\s|,)(매일|매주|격주|매월|매달|매년|매\s*\d+\s*(?:일|주|개월|달|년)\s*마다|\d+\s*(?:일|주|개월|달|년)\s*마다)(?=\s|,|$)/);
-    return match ? { token:match[1], error:'반복 일정은 아직 미지원입니다. 한 번의 일정으로 입력해 주세요.' } : null;
+    if(/(?:격주|매\s*\d+\s*(?:일|주|개월|달|년)\s*마다|\d+\s*(?:일|주|개월|달|년)\s*마다|매월\s*(?:첫째|둘째|셋째|넷째|마지막)|평일마다)/.test(source))return null;
+    if(/(?:^|\s|,)매일(?=\s|,|$)/.test(source))return {type:'daily',interval:1};
+    const weekly=source.match(/(?:^|\s|,)매주(?:\s+(일요일|월요일|화요일|수요일|목요일|금요일|토요일))?(?=\s|,|$)/);
+    if(weekly)return {type:'weekly',interval:1,weekday:weekly[1]?WEEKDAYS[weekly[1]]:null};
+    const monthly=source.match(/(?:^|\s|,)(?:매월|매달)(?:\s+(\d{1,2})일)?(?=\s|,|$)/);
+    if(monthly)return {type:'monthly',interval:1,dayOfMonth:monthly[1]?Number(monthly[1]):null};
+    const yearly=source.match(/(?:^|\s|,)매년(?:\s+(\d{1,2})월\s*(\d{1,2})일)?(?=\s|,|$)/);
+    if(yearly)return {type:'yearly',interval:1,month:yearly[1]?Number(yearly[1]):null,day:yearly[2]?Number(yearly[2]):null};
+    return null;
+  }
+  function detectUnsupportedRecurrence(text) {
+    const source=String(text||'').trim();
+    if(!source||parseSupportedRecurrence(source))return null;
+    const match=source.match(/(?:격주|매월\s*(?:첫째|둘째|셋째|넷째|마지막)|평일마다|매\s*\d+\s*(?:일|주|개월|달|년)\s*마다|\d+\s*(?:일|주|개월|달|년)\s*마다)/);
+    return match ? { token:match[0], error:'이 반복 규칙은 아직 지원하지 않습니다. 매일/매주/매월/매년 형식으로 입력해 주세요.' } : null;
   }
   function hasExplicitMultipleIntent(text){
     const source=String(text||'');
@@ -195,6 +208,7 @@
     return {
       source,
       recurrence:detectUnsupportedRecurrence(source),
+      repeat:parseSupportedRecurrence(source),
       multipleIntent:hasExplicitMultipleIntent(source),
       temporal:extractNaturalTemporalSignals(source,today)
     };
@@ -219,6 +233,25 @@
     }
     return score;
   }
+
+  function recurrenceStartDate(repeat,today,resolvedDate=null){
+    const base=normalizeDueDate(today);if(!base||!repeat)return resolvedDate||base;
+    if(repeat.type==='daily')return base;
+    if(repeat.type==='weekly')return resolvedDate||base;
+    if(repeat.type==='monthly'&&repeat.dayOfMonth){
+      const [y,m,d]=base.split('-').map(Number),target=Number(repeat.dayOfMonth);
+      const candidate=formatDateParts(y,m,target);if(isValidCalendarDate(y,m,target)&&candidate>=base)return candidate;
+      const next=new Date(Date.UTC(y,m,1)),ny=next.getUTCFullYear(),nm=next.getUTCMonth()+1;
+      return isValidCalendarDate(ny,nm,target)?formatDateParts(ny,nm,target):base;
+    }
+    if(repeat.type==='yearly'&&repeat.month&&repeat.day){
+      const y=Number(base.slice(0,4)),candidate=formatDateParts(y,repeat.month,repeat.day);
+      if(isValidCalendarDate(y,repeat.month,repeat.day)&&candidate>=base)return candidate;
+      return isValidCalendarDate(y+1,repeat.month,repeat.day)?formatDateParts(y+1,repeat.month,repeat.day):base;
+    }
+    return resolvedDate||base;
+  }
+
   function refineNaturalInboxItem(item,sourceText,today,feedback=[],analysis=null) {
     const normalized=normalizeInboxItem({...item,sourceText});
     if(!normalized)return null;
@@ -227,7 +260,7 @@
     const inputAnalysis=analysis||analyzeNaturalInput(source,today);
     const sig=inputAnalysis.temporal;
     const strongTodo=sig.todoKeywords.some(k=>['준비','하기','구매','신청','정리','확인','보내기','전화하기','예약하기','제출','결제','갱신','작성','잡기'].includes(k));
-    const strongSchedule=sig.timeRange || (sig.hasDate&&sig.hasTime&&!sig.deadline);
+    const strongSchedule=Boolean(inputAnalysis.repeat) || sig.timeRange || (sig.hasDate&&sig.hasTime&&!sig.deadline);
     let schedule=Boolean(normalized.scheduleOnly);
     if(sig.deadline)schedule=false;
     else if(strongSchedule)schedule=true;
@@ -251,6 +284,15 @@
       normalized.dueTime=sig.dueTime||normalized.dueTime||null;
       normalized.endTime=sig.endTime||normalized.endTime||null;
       normalized.allDay=!normalized.dueTime;
+      if(inputAnalysis.repeat){
+        const repeat={...inputAnalysis.repeat};
+        const date=normalized.dueDate||sig.dueDate||today;
+        if(repeat.type==='weekly'&&repeat.weekday==null&&date){const [y,m,d]=String(date).split('-').map(Number);repeat.weekday=new Date(Date.UTC(y,m-1,d)).getUTCDay();}
+        if(repeat.type==='monthly'&&!repeat.dayOfMonth&&date)repeat.dayOfMonth=Number(String(date).slice(8,10));
+        if(repeat.type==='yearly'&&(!repeat.month||!repeat.day)&&date){repeat.month=Number(String(date).slice(5,7));repeat.day=Number(String(date).slice(8,10));}
+        normalized.repeat=repeat;
+        normalized.dueDate=recurrenceStartDate(repeat,today,normalized.dueDate||sig.dueDate);
+      }
     }else if(normalized.type==='todo'){
       normalized.scheduleOnly=false;normalized.dueTime=null;normalized.endTime=null;normalized.allDay=false;
     }
@@ -419,7 +461,9 @@
       pendingMonth: normalizeDueMonth(item.pendingMonth),
       sourceText: normalizeOptional(item.sourceText),
       tags: normalizeTags(item.tags),
-      projectTitle: normalizeOptional(item.projectTitle)
+      projectTitle: normalizeOptional(item.projectTitle),
+      repeat: item.repeat&&typeof item.repeat==='object'?{...item.repeat}:null,
+      canceledAt: normalizeOptional(item.canceledAt)
     };
   }
   function summarizeInboxItems(items) {
@@ -766,7 +810,7 @@
       const todos = sortTodos(linked.filter(item => item.type === 'todo' && !item.scheduleOnly));
       const memos = sortRecent(linked.filter(item => item.type === 'memo' && !item.activityOnly));
       const activities = sortRecent(linked.filter(item => item.activityOnly));
-      const scheduleItems = sortSchedules(linked.filter(item => item.scheduleOnly && item.dueDate && !item.done));
+      const scheduleItems = sortSchedules(linked.filter(item => item.scheduleOnly && item.dueDate && !item.canceledAt));
       const datedItems = sortSchedules([projectItem, ...linked].filter(item => item && item.dueDate && !item.done));
       const doneTodos = todos.filter(item => item.done).length;
       const totalTodos = todos.length;
@@ -800,7 +844,7 @@
   function formatActivityLabel(item) {
     if (!item) return '';
     if (item.activityOnly) return '활동 기록';
-    if (item.scheduleOnly) return item.done ? '일정 완료' : '일정 추가';
+    if (item.scheduleOnly) return item.canceledAt ? '일정 취소' : '일정 추가';
     if (item.type === 'project') return item.done ? '프로젝트 완료' : '프로젝트 생성';
     if (item.type === 'todo') return item.done ? '할 일 완료' : '할 일 추가';
     return '메모 추가';
@@ -823,6 +867,7 @@
     prepareNaturalInboxItems,
     createManualMemo,
     detectUnsupportedRecurrence,
+    parseSupportedRecurrence,
     createClassificationFeedback,
     parseTodayScheduleCommand,
     parseLocalInboxCommand,
