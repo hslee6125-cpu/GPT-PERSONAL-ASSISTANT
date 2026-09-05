@@ -1,48 +1,29 @@
-(function(root,factory){
-  const api=factory();
-  if(typeof module!=='undefined'&&module.exports)module.exports=api;
-  if(root)root.CalendarUtils=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
-  const dateRe=/^\d{4}-\d{2}-\d{2}$/;
-  const monthRe=/^\d{4}-\d{2}$/;
-  function pad(n){return String(n).padStart(2,'0');}
-  function parseMonth(value){if(!monthRe.test(String(value||'')))return null;const [y,m]=value.split('-').map(Number);if(m<1||m>12)return null;return{y,m};}
-  function parseDate(value){if(!dateRe.test(String(value||'')))return null;const [y,m,d]=value.split('-').map(Number);const dt=new Date(y,m-1,d);if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d)return null;return{y,m,d};}
-  function formatDate(y,m,d){return`${y}-${pad(m)}-${pad(d)}`;}
-  function monthKey(dateString){const p=parseDate(dateString);return p?`${p.y}-${pad(p.m)}`:null;}
-  function shiftMonth(monthString,delta){const p=parseMonth(monthString);if(!p)return null;const dt=new Date(p.y,p.m-1+Number(delta||0),1);return`${dt.getFullYear()}-${pad(dt.getMonth()+1)}`;}
-  function buildMonthGrid(monthString){const p=parseMonth(monthString);if(!p)throw new Error('월 형식이 올바르지 않습니다.');const first=new Date(p.y,p.m-1,1);const start=new Date(p.y,p.m-1,1-first.getDay());const cells=[];for(let i=0;i<42;i++){const dt=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);const date=formatDate(dt.getFullYear(),dt.getMonth()+1,dt.getDate());cells.push({date,inMonth:dt.getFullYear()===p.y&&dt.getMonth()+1===p.m});}return cells;}
-
-  function addDays(dateString,delta){const p=parseDate(dateString);if(!p)return null;const dt=new Date(p.y,p.m-1,p.d+Number(delta||0));return formatDate(dt.getFullYear(),dt.getMonth()+1,dt.getDate());}
-  function weekStart(dateString){const p=parseDate(dateString);if(!p)return null;const dt=new Date(p.y,p.m-1,p.d);return addDays(dateString,-dt.getDay());}
-  function buildWeekDays(dateString){const start=weekStart(dateString);if(!start)throw new Error('날짜 형식이 올바르지 않습니다.');return Array.from({length:7},(_,i)=>addDays(start,i));}
-  function timeToMinutes(value){const m=String(value||'').match(/^([01]\d|2[0-3]):([0-5]\d)$/);return m?Number(m[1])*60+Number(m[2]):null;}
-  function minutesToTime(value){const n=Math.max(0,Math.min(1439,Math.round(Number(value)||0)));return`${pad(Math.floor(n/60))}:${pad(n%60)}`;}
-  function normalizeScheduleRange(item={}){const start=timeToMinutes(item.dueTime);if(start===null)return null;const explicitEnd=timeToMinutes(item.endTime);const end=explicitEnd!==null&&explicitEnd>start?explicitEnd:Math.min(1440,start+60);return{start,end,duration:Math.max(15,end-start)};}
-  function snapMinutes(value,step=15){const size=Math.max(1,Number(step)||15);return Math.max(0,Math.min(1439,Math.round((Number(value)||0)/size)*size));}
-  function moveScheduleSlot(item,targetDate,targetMinutes){const range=normalizeScheduleRange(item)||{start:0,end:60,duration:60};const start=snapMinutes(targetMinutes,15);const maxStart=Math.max(0,1440-range.duration);const safeStart=Math.min(start,maxStart);return{dueDate:targetDate,dueTime:minutesToTime(safeStart),endTime:minutesToTime(safeStart+range.duration),allDay:false};}
-
-  function entrySort(a,b){return String(a.date||'').localeCompare(String(b.date||''))||String(a.time||'99:99').localeCompare(String(b.time||'99:99'))||String(a.title||'').localeCompare(String(b.title||''),'ko');}
-  function buildCalendarEntries({assistant=[],cooking=[]}={}){
-    const out=[];
-    for(const item of Array.isArray(assistant)?assistant:[]){
-      if(!item||item.deletedAt||!parseDate(item.dueDate))continue;
-      if(item.scheduleOnly)out.push({id:String(item.id),source:'assistant',kind:'schedule',title:String(item.title||''),date:item.dueDate,time:item.dueTime||null,endTime:item.endTime||null,allDay:Boolean(item.allDay),projectTitle:item.projectTitle||null,done:Boolean(item.done)});
-      else if(item.type==='todo')out.push({id:String(item.id),source:'assistant',kind:'todo',title:String(item.title||''),date:item.dueDate,time:null,projectTitle:item.projectTitle||null,done:Boolean(item.done)});
+(function(root,factory){const api=factory();if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.CalendarUtils=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
+  const pad=n=>String(n).padStart(2,'0');
+  function validDate(v){const s=String(v||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return null;const [y,m,d]=s.split('-').map(Number),x=new Date(Date.UTC(y,m-1,d));return x.getUTCFullYear()===y&&x.getUTCMonth()===m-1&&x.getUTCDate()===d?s:null;}
+  function dateFrom(y,m,d){const x=new Date(Date.UTC(y,m-1,d));return `${x.getUTCFullYear()}-${pad(x.getUTCMonth()+1)}-${pad(x.getUTCDate())}`;}
+  function addDays(v,n){const s=validDate(v);if(!s)return null;const [y,m,d]=s.split('-').map(Number);return dateFrom(y,m,d+Number(n||0));}
+  function monthKey(v){const s=validDate(v);return s?s.slice(0,7):(/^\d{4}-\d{2}$/.test(String(v||''))?String(v):null);}
+  function shiftMonth(v,n){const m=monthKey(v);if(!m)return null;const [y,mo]=m.split('-').map(Number),d=new Date(Date.UTC(y,mo-1+Number(n||0),1));return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}`;}
+  function startOfWeek(v){const s=validDate(v);if(!s)return null;const [y,m,d]=s.split('-').map(Number),x=new Date(Date.UTC(y,m-1,d));const delta=(x.getUTCDay()+6)%7;return addDays(s,-delta);}
+  function endOfWeek(v){const s=startOfWeek(v);return s?addDays(s,6):null;}
+  function endOfMonth(v){const m=monthKey(v);if(!m)return null;const [y,mo]=m.split('-').map(Number),x=new Date(Date.UTC(y,mo,0));return `${x.getUTCFullYear()}-${pad(x.getUTCMonth()+1)}-${pad(x.getUTCDate())}`;}
+  function scheduleState(item,today){if(!item||item.deletedAt||!item.scheduleOnly)return null;if(item.canceledAt)return'canceled';if(item.dateUndecided||(!item.dueDate&&item.pendingMonth))return'undecided';if(item.repeat?.type)return'upcoming';const d=validDate(item.dueDate);if(!d)return'undecided';return d<String(today||'')?'past':'upcoming';}
+  function sortUpcoming(a,b){return String(a.dueDate||'9999-99-99').localeCompare(String(b.dueDate||'9999-99-99'))||String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'))||String(a.createdAt||'').localeCompare(String(b.createdAt||''));}
+  function partitionSchedules(items,today){const out={upcoming:[],undecided:[],past:[],canceled:[]};for(const x of Array.isArray(items)?items:[]){const st=scheduleState(x,today);if(st)out[st].push(x);}out.upcoming.sort(sortUpcoming);out.undecided.sort((a,b)=>String(a.pendingMonth||'9999-99').localeCompare(String(b.pendingMonth||'9999-99'))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));out.past.sort((a,b)=>String(b.dueDate||'').localeCompare(String(a.dueDate||''))||String(b.dueTime||'').localeCompare(String(a.dueTime||'')));out.canceled.sort(sortUpcoming);return out;}
+  function minutes(t){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(t||'')))return null;const [h,m]=String(t).split(':').map(Number);return h*60+m;}
+  function detectConflict(candidate,items,ignoreId=null){if(!candidate||candidate.dateUndecided||candidate.canceledAt)return null;const ns=minutes(candidate.dueTime),ne=minutes(candidate.endTime);if(!candidate.dueDate||ns==null||ne==null||ne<=ns)return null;for(const x of Array.isArray(items)?items:[]){if(!x||x.id===ignoreId||x.deletedAt||x.canceledAt||!x.scheduleOnly||x.dateUndecided||x.dueDate!==candidate.dueDate)continue;const s=minutes(x.dueTime),e=minutes(x.endTime);if(s==null||e==null||e<=s)continue;if(ns<e&&ne>s)return x;}return null;}
+  function repeatRule(input){const r=input&&typeof input==='object'?input:null;if(!r||!['daily','weekly','monthly','yearly'].includes(r.type))return null;const out={type:r.type,interval:1};if(r.type==='weekly')out.weekday=Number.isInteger(Number(r.weekday))?Number(r.weekday):null;if(r.type==='monthly')out.dayOfMonth=Number(r.dayOfMonth)||null;if(r.type==='yearly'){out.month=Number(r.month)||null;out.day=Number(r.day)||null;}return out;}
+  function occurrenceDate(item,date){return {...item,occurrenceOf:item.id,occurrenceDate:date,dueDate:date,id:`${item.id}@${date}`};}
+  function generateOccurrences(item,from,to,limit=370){const start=validDate(from),end=validDate(to),base=validDate(item?.dueDate),r=repeatRule(item?.repeat);if(!start||!end||!base||!r||end<start)return[];const out=[];let cursor=base,guard=0;while(cursor<=end&&guard++<limit*5){if(cursor>=start&&cursor<=end){let ok=true;if(r.type==='monthly'){const day=Number(r.dayOfMonth);ok=Number(cursor.slice(8,10))===day;}if(r.type==='yearly')ok=Number(cursor.slice(5,7))===Number(r.month)&&Number(cursor.slice(8,10))===Number(r.day);if(ok&&!(Array.isArray(item.repeat?.exDates)&&item.repeat.exDates.includes(cursor)))out.push(occurrenceDate(item,cursor));}
+      if(r.type==='daily')cursor=addDays(cursor,1);
+      else if(r.type==='weekly')cursor=addDays(cursor,7);
+      else if(r.type==='monthly'){const [y,m]=cursor.split('-').map(Number),target=Number(r.dayOfMonth)||Number(base.slice(8,10));let next=shiftMonth(`${y}-${pad(m)}`,1);const [ny,nm]=next.split('-').map(Number),last=Number(endOfMonth(next).slice(8,10));cursor=target<=last?`${ny}-${pad(nm)}-${pad(target)}`:shiftMonth(next,1)+'-'+pad(Math.min(target,Number(endOfMonth(shiftMonth(next,1)).slice(8,10))));if(Number(cursor.slice(8,10))!==target){cursor=shiftMonth(next,1)+'-'+pad(target);}}
+      else {const y=Number(cursor.slice(0,4))+1,m=Number(r.month)||Number(base.slice(5,7)),d=Number(r.day)||Number(base.slice(8,10)),candidate=`${y}-${pad(m)}-${pad(d)}`;cursor=validDate(candidate)||`${y+1}-${pad(m)}-${pad(d)}`;}
     }
-    for(const item of Array.isArray(cooking)?cooking:[]){if(!item||!parseDate(item.date))continue;out.push({id:String(item.id),source:'cooking',kind:'cooking',title:String(item.name||'요리 프로젝트'),date:item.date,time:item.time||null,projectTitle:null,done:false});}
-    return out.sort(entrySort);
+    return out.filter(x=>validDate(x.dueDate)&&x.dueDate>=start&&x.dueDate<=end).slice(0,limit);
   }
-  function entriesForDate(entries,date){return (Array.isArray(entries)?entries:[]).filter(x=>x?.date===date).sort(entrySort);}
-  function buildDayPreview(entries,date,limit=3){const items=entriesForDate(entries,date);const count=Math.max(0,Number(limit)||0);return{visible:items.slice(0,count),overflow:Math.max(0,items.length-count)};}
-  function buildCalendarSummaries({assistant=[],cooking=[],today}={}){
-    if(!parseDate(today))throw new Error('오늘 날짜 형식이 올바르지 않습니다.');
-    const entries=buildCalendarEntries({assistant,cooking}).filter(x=>x.date>today);
-    return{
-      schedules:entries.filter(x=>x.kind==='schedule').slice(0,6),
-      todos:entries.filter(x=>x.kind==='todo'&&!x.done).slice(0,6),
-      projects:entries.filter(x=>x.kind==='cooking'||Boolean(x.projectTitle)).slice(0,6)
-    };
-  }
-  return{monthKey,shiftMonth,buildMonthGrid,buildCalendarEntries,entriesForDate,buildDayPreview,buildCalendarSummaries,addDays,weekStart,buildWeekDays,timeToMinutes,minutesToTime,normalizeScheduleRange,snapMinutes,moveScheduleSlot};
+  function expandSchedules(items,from,to){const out=[];for(const item of Array.isArray(items)?items:[]){if(!item||item.deletedAt||!item.scheduleOnly||item.canceledAt||item.dateUndecided)continue;if(item.repeat)out.push(...generateOccurrences(item,from,to));else if(item.dueDate>=from&&item.dueDate<=to)out.push(item);}return out.sort(sortUpcoming);}
+  function filterSchedules(items,{today,view='all',query='',state='upcoming'}={}){const q=String(query||'').trim().toLowerCase();let list=(Array.isArray(items)?items:[]).filter(x=>x&&x.scheduleOnly&&!x.deletedAt);if(state!=='all')list=list.filter(x=>scheduleState(x,today)===state);if(q)list=list.filter(x=>[x.title,x.details,...(Array.isArray(x.tags)?x.tags:[])].join(' ').toLowerCase().includes(q));if(view==='today')list=list.filter(x=>x.dueDate===today);else if(view==='week'){const a=startOfWeek(today),b=endOfWeek(today);list=list.filter(x=>x.dueDate&&x.dueDate>=a&&x.dueDate<=b);}else if(view==='month'){const m=String(today||'').slice(0,7);list=list.filter(x=>x.dueDate?.startsWith(m)||x.pendingMonth===m);}return list.sort(sortUpcoming);}
+  return{validDate,addDays,monthKey,shiftMonth,startOfWeek,endOfWeek,endOfMonth,scheduleState,partitionSchedules,detectConflict,repeatRule,generateOccurrences,expandSchedules,filterSchedules,sortUpcoming};
 });
