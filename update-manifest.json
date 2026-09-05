@@ -1,5 +1,5 @@
 {
-  "version": "5.1.8",
+  "version": "5.1.9",
   "runNpmInstall": false,
   "files": [
     {
@@ -9,10 +9,6 @@
     {
       "path": "public/index.html",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
-    },
-    {
-      "path": "public/js/navigation.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/navigation.js"
     }
   ]
 }
