@@ -9,9 +9,9 @@
   let activeTodoMode='todo';
   let undoTimer=null;
   let feedbackCache=null;
-  let memoSortDirection='desc';
-  let activeMemoId=null;
-  let memoComposerOpen=false;
+  let memoSortOrder='desc';
+  let memoSelectedId=null;
+  let memoCreating=false;
 
   function loadClassificationFeedback(){if(Array.isArray(feedbackCache))return feedbackCache;try{const data=JSON.parse(localStorage.getItem(FEEDBACK_KEY)||'[]');feedbackCache=Array.isArray(data)?data.slice(-200):[];}catch{feedbackCache=[];}return feedbackCache;}
   function recordClassificationFeedback(sourceText,from,to){if(!sourceText||from===to||!['todo','schedule'].includes(from)||!['todo','schedule'].includes(to))return;try{const list=loadClassificationFeedback();list.push(AssistantUtils.createClassificationFeedback(sourceText,from,to));feedbackCache=list.slice(-200);localStorage.setItem(FEEDBACK_KEY,JSON.stringify(feedbackCache));}catch{}}
@@ -27,7 +27,7 @@
       alert('모든 Assistant 데이터가 초기화되었습니다.');
     }catch{alert('전체 데이터 초기화에 실패했습니다.');}
   }
-  function addManualMemo(){try{const title=$('memoManualTitle')?.value||'';const details=$('memoManualDetails')?.value||'';const now=new Date().toISOString();const memo=AssistantUtils.createManualMemo(title,details,{id:GPA.uid(),createdAt:now,updatedAt:now});s.assistant.unshift(memo);activeMemoId=memo.id;memoComposerOpen=false;GPA.persist('manual-memo');}catch(e){alert(e.message);}}
+  function addManualMemo(){try{const title=$('memoManualTitle')?.value||'';const details=$('memoManualDetails')?.value||'';const now=new Date().toISOString();const memo=AssistantUtils.createManualMemo(title,details,{id:GPA.uid(),createdAt:now,updatedAt:now});s.assistant.unshift(memo);memoSelectedId=memo.id;memoCreating=false;GPA.persist('manual-memo');}catch(e){alert(e.message);}}
 
   function setInboxError(message=''){const el=$('inboxError');if(!el)return;el.textContent=message;el.style.display=message?'block':'none';}
   function setInboxResult(message=''){const el=$('inboxResult');if(!el)return;el.textContent=message;el.classList.toggle('show',Boolean(message));}
@@ -132,7 +132,7 @@
       s.assistant=AssistantUtils.updateAssistantItem(s.assistant,id,patch);
       const after=s.assistant.find(item=>item.id===id);const afterClass=after?.scheduleOnly?'schedule':after?.type;
       if(beforeClass!==afterClass)recordClassificationFeedback(before.sourceText,beforeClass,afterClass);
-      projectHub.select(after?.type==='project'?after.title:(after?.projectTitle||before?.projectTitle||projectHub.getActiveKey()));s.editingAssistantId=null;GPA.persist();
+      projectHub.select(after?.type==='project'?after.title:(after?.projectTitle||before?.projectTitle||projectHub.getActiveKey()));if(after?.type==='memo')memoSelectedId=after.id;s.editingAssistantId=null;GPA.persist();
     }catch(e){alert(e.message);}
   }
   function toggleClassificationFields(id,value){const fields=$(`edit-schedule-fields-${id}`);if(fields)fields.style.display=value==='schedule'?'contents':'none';}
@@ -152,24 +152,38 @@
     const actions=x.scheduleOnly?`<button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost" data-assistant-action="cancel-schedule" data-id="${x.id}">${x.canceledAt?'취소 복원':'일정 취소'}</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button>`:`<button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost assistant-complete-action" data-assistant-action="toggle" data-id="${x.id}">${x.done?'되돌리기':'완료'}</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button>`;
     return `<div class="item" data-assistant-item-id="${x.id}" style="${x.canceledAt?'opacity:.58':''}${x.done?'opacity:.55':''}"><div class="itemrow"><div class="assistant-content"><div class="title" style="${x.canceledAt?'text-decoration:line-through':''}${x.done?'text-decoration:line-through':''}">${esc(x.title)}</div><div class="details">${esc(x.details||'')}</div><div class="meta"><span class="chip">${esc(kindLabel)}</span><span class="chip ${esc(x.priority||'medium')}">${esc(priorityLabels[x.priority||'medium']||x.priority)}</span>${pendingChip}${repeatChip}${canceledChip}${x.dueDate?`<span class="chip">${esc(x.dueDate)}${x.scheduleOnly?(x.allDay||!x.dueTime?' · 종일':x.dueTime?` · ${esc(x.dueTime)}${x.endTime?`~${esc(x.endTime)}`:''}`:''):''}</span>`:''}${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div></div><div class="actions">${actions}</div></div></div>`;
   }
-  function memoBoardCard(x){
+  function memoDateLabel(x){
+    const raw=AssistantUtils.memoModifiedAt(x);if(!raw)return '수정일 없음';
+    const d=new Date(raw);if(Number.isNaN(d.getTime()))return String(raw).slice(0,10);
+    const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function memoListRow(x){
+    const body=String(x.details||'').trim();const selected=String(memoSelectedId)===String(x.id);
+    return `<button type="button" class="memo-list-row ${selected?'active':''}" data-memo-select="${x.id}" data-assistant-item-id="${x.id}"><span class="memo-list-title">${esc(x.title)}</span><span class="memo-list-preview">${esc(body||'내용 없음')}</span><span class="memo-list-date">${esc(memoDateLabel(x))}</span></button>`;
+  }
+  function memoDetail(x){
+    if(!x)return `<div class="memo-detail-empty"><b>메모를 선택하세요.</b><span>왼쪽 목록에서 메모를 선택하거나 새 메모를 작성할 수 있습니다.</span></div>`;
+    if(s.editingAssistantId===x.id)return editCard(x);
     const tags=(Array.isArray(x.tags)?x.tags:[]).map(tag=>`<span class="chip">#${esc(tag)}</span>`).join('');
-    const body=String(x.details||'').trim();
-    return `<article class="memo-board-card" data-assistant-item-id="${x.id}" style="${x.done?'opacity:.55':''}"><div class="memo-board-main"><div class="memo-board-title">${esc(x.title)}</div><div class="memo-board-body ${body?'':'empty-body'}">${esc(body||'내용 없음')}</div></div><div class="memo-board-footer"><div class="memo-board-meta">${x.dueDate?`<span class="chip">${esc(x.dueDate)}${x.scheduleOnly?(x.allDay||!x.dueTime?' · 종일':x.dueTime?` · ${esc(x.dueTime)}${x.endTime?`~${esc(x.endTime)}`:''}`:''):''}</span>`:''}${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div><div class="actions memo-board-actions"><button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost assistant-complete-action" data-assistant-action="toggle" data-id="${x.id}">${x.done?'되돌리기':'완료'}</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button></div></div></article>`;
+    return `<article class="memo-detail-card" data-assistant-item-id="${x.id}"><div class="memo-detail-head"><div><h3>${esc(x.title)}</h3><div class="memo-detail-date">최근 수정 ${esc(memoDateLabel(x))}</div></div><div class="actions memo-detail-actions"><button class="small ghost" data-assistant-action="edit" data-id="${x.id}">수정</button><button class="small ghost danger" data-assistant-action="delete" data-id="${x.id}">삭제</button></div></div><div class="memo-detail-body">${esc(String(x.details||'').trim()||'내용 없음')}</div>${x.projectTitle||tags?`<div class="memo-detail-meta">${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div>`:''}</article>`;
+  }
+  function memoComposer(){return `<div class="memo-create-card"><div class="memo-detail-head"><div><h3>새 메모</h3><div class="memo-detail-date">저장하면 목록에 바로 추가됩니다.</div></div></div><div class="edit-grid memo-create-grid"><div class="edit-span"><label>제목</label><input id="memoManualTitle" maxlength="200" placeholder="메모 제목"></div><div class="edit-span"><label>내용</label><textarea id="memoManualDetails" class="edit-details" placeholder="메모 내용을 직접 입력하세요."></textarea></div></div><div class="actions edit-actions"><button type="button" class="small ghost" data-assistant-action="cancel-memo-create">취소</button><button type="button" class="small primary" data-assistant-action="add-memo">메모 저장</button></div></div>`;}
+  function memoSplitView(items){
+    const ordered=AssistantUtils.sortMemosByModified(items,memoSortOrder);
+    if(!memoCreating&&(!memoSelectedId||!ordered.some(x=>String(x.id)===String(memoSelectedId))))memoSelectedId=ordered[0]?.id||null;
+    const selected=ordered.find(x=>String(x.id)===String(memoSelectedId))||null;
+    const sortLabel=memoSortOrder==='desc'?'최신순 ↓':'오래된순 ↑';
+    const rows=ordered.length?ordered.map(memoListRow).join(''):'<div class="memo-list-empty">메모가 없습니다.</div>';
+    return `<div class="memo-split-view"><aside class="memo-list-pane"><div class="memo-list-toolbar"><button type="button" class="small primary" data-assistant-action="new-memo">+ 새 메모</button><button type="button" class="small ghost" data-assistant-action="toggle-memo-sort">${sortLabel}</button></div><div class="memo-list-scroll">${rows}</div></aside><section class="memo-detail-pane">${memoCreating?memoComposer():memoDetail(selected)}</section></div>`;
   }
   function trashTypeLabel(x){if(x.activityOnly)return '활동';if(x.scheduleOnly)return '일정';return typeLabels[x.type]||'항목';}
   function trashCard(x){return `<div class="item trash-item"><div class="itemrow"><div class="assistant-content"><div class="title">${esc(x.title)}</div><div class="meta"><span class="chip">${esc(trashTypeLabel(x))}</span>${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${x.deletedAt?`<span class="chip">삭제 ${esc(String(x.deletedAt).slice(0,16).replace('T',' '))}</span>`:''}</div></div><div class="actions"><button class="small ghost" data-assistant-action="restore" data-id="${x.id}">복구</button><button class="small ghost danger" data-assistant-action="permanent-delete" data-id="${x.id}">영구 삭제</button></div></div></div>`;}
 
-  function setActiveFilter(filter,{preserveTodoMode=false}={}){if(!['todo','memo','project','done','trash'].includes(filter))return;if(filter==='todo'&&!preserveTodoMode)activeTodoMode='todo';activeFilter=filter;s.editingAssistantId=null;if(filter!=='memo')memoComposerOpen=false;projectHub.resetEditor();render();GPA.navigation?.renderActive();}
+  function setActiveFilter(filter,{preserveTodoMode=false}={}){if(!['todo','memo','project','done','trash'].includes(filter))return;if(filter==='todo'&&!preserveTodoMode)activeTodoMode='todo';if(filter!=='memo')memoCreating=false;activeFilter=filter;s.editingAssistantId=null;projectHub.resetEditor();render();GPA.navigation?.renderActive();}
   function setTodoMode(mode){if(!['todo','schedule'].includes(mode))return;activeTodoMode=mode;s.editingAssistantId=null;projectHub.resetEditor();render();}
   function maybeOpenFilteredItems(filter){setActiveFilter(filter);document.querySelector('.assistant-overview-card')?.scrollIntoView({behavior:'smooth',block:'start'});}
   const projectHub=AssistantProjects.create({GPA,typeLabels,priorityLabels,renderAssistant:()=>render(),toggleItem:toggle,softDeleteItem:softDelete,openFilter:maybeOpenFilteredItems});
 
-  function memoComposer(){return `<div class="memo-detail-editor"><div class="memo-detail-head"><div><div class="memo-detail-eyebrow">NEW MEMO</div><h3>새 메모</h3></div></div><div class="edit-grid"><div class="edit-span"><label>제목</label><input id="memoManualTitle" maxlength="200" placeholder="메모 제목"></div><div class="edit-span"><label>내용</label><textarea id="memoManualDetails" class="edit-details memo-detail-textarea" placeholder="메모 내용을 직접 입력하세요."></textarea></div></div><div class="actions edit-actions"><button type="button" class="small ghost" data-assistant-action="cancel-new-memo">취소</button><button type="button" class="small primary" data-assistant-action="add-memo">메모 저장</button></div></div>`;}
-  function formatMemoModifiedAt(x){const raw=AssistantUtils.memoModifiedAt(x);if(!raw)return '수정일 없음';const d=new Date(raw);if(Number.isNaN(d.getTime()))return String(raw).slice(0,16).replace('T',' ');return d.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
-  function memoListRow(x){const selected=String(x.id)===String(activeMemoId);const preview=String(x.details||'').trim().replace(/\s+/g,' ');return `<button type="button" class="memo-list-row ${selected?'active':''}" data-memo-select="${esc(x.id)}" data-assistant-item-id="${esc(x.id)}"><div class="memo-list-row-title">${esc(x.title||'제목 없음')}</div>${preview?`<div class="memo-list-row-preview">${esc(preview)}</div>`:''}<div class="memo-list-row-date">${esc(formatMemoModifiedAt(x))}</div></button>`;}
-  function memoDetailView(x){if(!x)return `<div class="memo-detail-empty"><b>메모를 선택하세요.</b><span>왼쪽 목록에서 메모를 클릭하면 내용이 여기에 표시됩니다.</span></div>`;if(s.editingAssistantId===x.id)return editCard(x);const tags=(Array.isArray(x.tags)?x.tags:[]).map(tag=>`<span class="chip">#${esc(tag)}</span>`).join('');return `<article class="memo-detail-card" data-assistant-item-id="${esc(x.id)}"><div class="memo-detail-head"><div><div class="memo-detail-eyebrow">MEMO</div><h3>${esc(x.title||'제목 없음')}</h3><div class="memo-detail-date">수정 ${esc(formatMemoModifiedAt(x))}</div></div><div class="actions"><button class="small ghost" data-assistant-action="edit" data-id="${esc(x.id)}">수정</button><button class="small ghost danger" data-assistant-action="delete" data-id="${esc(x.id)}">삭제</button></div></div><div class="memo-detail-body ${String(x.details||'').trim()?'':'empty-body'}">${esc(String(x.details||'').trim()||'내용 없음')}</div>${x.projectTitle||tags?`<div class="memo-detail-meta">${x.projectTitle?`<span class="chip">↳ ${esc(x.projectTitle)}</span>`:''}${tags}</div>`:''}</article>`;}
-  function renderMemoSplit(memos){const sorted=AssistantUtils.sortMemosByModifiedAt(memos,memoSortDirection);if(activeMemoId&&!sorted.some(x=>String(x.id)===String(activeMemoId)))activeMemoId=null;if(!activeMemoId&&sorted.length&&!memoComposerOpen)activeMemoId=sorted[0].id;const selected=sorted.find(x=>String(x.id)===String(activeMemoId))||null;const sortLabel=memoSortDirection==='desc'?'최신순 ↓':'오래된순 ↑';return `<div class="memo-split-view"><aside class="memo-list-pane"><div class="memo-list-toolbar"><div><b>메모</b><span>${sorted.length}개</span></div><div class="memo-list-toolbar-actions"><button type="button" class="small ghost" data-memo-sort>${sortLabel}</button><button type="button" class="small primary" data-assistant-action="new-memo">+ 새 메모</button></div></div><div class="memo-list-scroll">${sorted.length?sorted.map(memoListRow).join(''):'<div class="memo-list-empty">메모가 없습니다.</div>'}</div></aside><section class="memo-detail-pane">${memoComposerOpen?memoComposer():memoDetailView(selected)}</section></div>`;}
   function renderPastSchedules(items){if(!items.length)return '';return `<details class="past-schedules" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">과거 일정 ${items.length}개</summary><div class="list" style="margin-top:10px">${items.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join('')}</div></details>`;}
   function renderTrash(items){const controls=items.length?`<div class="trash-toolbar"><div><b>휴지통</b><span>${items.length}개 항목</span></div><button type="button" class="small ghost danger" data-assistant-action="empty-trash">휴지통 비우기</button></div>`:'';$('assistantList').innerHTML=controls+(items.length?items.map(trashCard).join(''):'<div class="empty">휴지통이 비어 있습니다.</div>');}
   function render(){
@@ -177,7 +191,7 @@
     const projects=projectHub.getProjects();$('todoKpi').textContent=grouped.counts.todo;$('memoKpi').textContent=grouped.counts.memo;$('projKpi').textContent=projects.length;$('doneKpi').textContent=grouped.counts.done;$('trashKpi').textContent=grouped.counts.trash;
     document.querySelectorAll('[data-assistant-filter]').forEach(tab=>{const selected=tab.dataset.assistantFilter===activeFilter;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});const projectMode=activeFilter === 'project';$('assistantListPanel')?.classList.toggle('active',!projectMode);$('assistantProjectHub')?.classList.toggle('active',projectMode);if(projectMode){projectHub.render(projects);return;}
     const todoModeTabs=$('assistantTodoModeTabs');if(todoModeTabs){todoModeTabs.hidden=activeFilter!=='todo';todoModeTabs.querySelectorAll('[data-assistant-item-mode]').forEach(tab=>{const selected=tab.dataset.assistantItemMode===activeTodoMode;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});}
-    const list=$('assistantList');list.classList.remove('memo-board');list.classList.toggle('memo-split-host',activeFilter==='memo');
+    const list=$('assistantList');list.classList.toggle('memo-split-host',activeFilter==='memo');
     if(activeFilter==='trash'){renderTrash(grouped.trash);return;}
     if(activeFilter==='todo'&&activeTodoMode==='schedule'){
       const parts=typeof CalendarUtils!=='undefined'?CalendarUtils.partitionSchedules(s.assistant,GPA.today()):{upcoming:grouped.schedules.current,undecided:[],past:grouped.schedules.past,canceled:[]};
@@ -191,12 +205,12 @@
     else if(activeFilter==='done')visible=grouped.done;
     else visible=AssistantUtils.filterAssistantItems(s.assistant,activeFilter);
     const emptyLabel=filterLabels[activeFilter];
-    if(activeFilter==='memo'){list.innerHTML=renderMemoSplit(visible);return;}
+    if(activeFilter==='memo'){list.innerHTML=memoSplitView(visible);return;}
     list.innerHTML=visible.length?visible.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join(''):`<div class="empty">${esc(emptyLabel)} 항목이 없습니다.</div>`;
   }
   function bind(){
     $('analyzeInbox').addEventListener('click',analyzeInbox);$('inboxText').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();analyzeInbox();}});document.querySelector('.assistant-filter-tabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-filter]');if(tab)setActiveFilter(tab.dataset.assistantFilter);});$('assistantTodoModeTabs')?.addEventListener('click',e=>{const tab=e.target.closest('[data-assistant-item-mode]');if(tab)setTodoMode(tab.dataset.assistantItemMode);});
-    $('assistantList').addEventListener('click',e=>{const memoSelect=e.target.closest('[data-memo-select]');if(memoSelect){activeMemoId=memoSelect.dataset.memoSelect;memoComposerOpen=false;s.editingAssistantId=null;render();return;}const sortButton=e.target.closest('[data-memo-sort]');if(sortButton){memoSortDirection=memoSortDirection==='desc'?'asc':'desc';render();return;}const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':activeMemoId=id||activeMemoId;memoComposerOpen=false;startEdit(id);break;case'toggle':toggle(id);break;case'cancel-schedule':cancelSchedule(id);break;case'delete':softDelete(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;case'restore':restore(id);break;case'permanent-delete':permanentDelete(id);break;case'empty-trash':emptyTrash();break;case'new-memo':memoComposerOpen=true;activeMemoId=null;s.editingAssistantId=null;render();requestAnimationFrame(()=>$('memoManualTitle')?.focus());break;case'cancel-new-memo':memoComposerOpen=false;render();break;case'add-memo':addManualMemo();break;}});
+    $('assistantList').addEventListener('click',e=>{const memoRow=e.target.closest('[data-memo-select]');if(memoRow){memoSelectedId=memoRow.dataset.memoSelect;memoCreating=false;s.editingAssistantId=null;render();return;}const b=e.target.closest('button[data-assistant-action]');if(!b)return;const id=b.dataset.id;switch(b.dataset.assistantAction){case'edit':if(id)memoSelectedId=id;startEdit(id);break;case'toggle':toggle(id);break;case'cancel-schedule':cancelSchedule(id);break;case'delete':softDelete(id);break;case'save':saveEdit(id);break;case'cancel':cancelEdit();break;case'restore':restore(id);break;case'permanent-delete':permanentDelete(id);break;case'empty-trash':emptyTrash();break;case'new-memo':memoCreating=true;s.editingAssistantId=null;render();requestAnimationFrame(()=>$('memoManualTitle')?.focus());break;case'cancel-memo-create':memoCreating=false;render();break;case'toggle-memo-sort':memoSortOrder=memoSortOrder==='desc'?'asc':'desc';render();break;case'add-memo':addManualMemo();break;}});
     $('assistantList').addEventListener('change',e=>{const classification=e.target.closest('[data-assistant-classification]');if(classification)toggleClassificationFields(classification.dataset.assistantClassification,classification.value);const year=e.target.closest('[data-undecided-date-year]');const month=e.target.closest('[data-undecided-date-month]');const id=year?.dataset.undecidedDateYear||month?.dataset.undecidedDateMonth;if(id)updatePendingDayOptions(id);});
     $('resetClassificationLearning')?.addEventListener('click',resetClassificationLearning);
     $('resetAssistantData')?.addEventListener('click',resetAssistantData);
@@ -212,7 +226,7 @@
     else if(item.activityOnly&&item.projectTitle){projectHub.select(item.projectTitle);setActiveFilter('project');}
     else if(item.done)setActiveFilter('done');
     else if(item.type==='project'){projectHub.select(item.title);setActiveFilter('project');}
-    else{if(item.type==='memo')activeMemoId=item.id;setActiveFilter(item.type==='memo'?'memo':'todo');}
+    else {if(item.type==='memo')memoSelectedId=item.id;setActiveFilter(item.type==='memo'?'memo':'todo');}
     scrollToAssistantItem(id);return true;
   }
   GPA.assistant={render,bind,openFilter,openProject,openItem,getActiveFilter:()=>activeFilter};
