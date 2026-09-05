@@ -5,11 +5,12 @@
 
   function weekdayLabel(dateString){const[y,m,d]=dateString.split('-').map(Number);const dt=new Date(y,m-1,d);return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(dt);}
   function nowTime(){const d=new Date();return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
-  function defaultMode(){const h=new Date().getHours();return h>=17||h<5?'review':'day';}
+  function isReviewWindow(hour=new Date().getHours()){return hour>=21||hour<5;}
+  function defaultMode(){return isReviewWindow()?'review':'day';}
   function greeting(){const h=new Date().getHours();if(h<12)return'좋은 아침입니다.';if(h<17)return'좋은 오후입니다.';return'좋은 저녁입니다.';}
   function dayPart(){const h=new Date().getHours();if(h<12)return'morning';if(h<17)return'afternoon';return'evening';}
   function timeGraphic(part){
-    if(part==='morning')return`<div class="daily-time-graphic morning" aria-hidden="true"><svg viewBox="0 0 180 92" focusable="false"><circle class="sun" cx="118" cy="34" r="18"/><path class="ray" d="M118 6v12M118 50v12M90 34H78M158 34h12M98 14l8 8M138 14l-8 8"/><path class="horizon" d="M20 72c24-22 46-25 66-8 17-15 38-16 74 8"/></svg></div>`;
+    if(part==='morning')return`<div class="daily-time-graphic morning" aria-hidden="true"><svg viewBox="0 0 180 92" focusable="false"><circle class="sun-glow" cx="118" cy="34" r="25"/><circle class="sun" cx="118" cy="34" r="18"/><path class="ray" d="M118 4v11"/><path class="ray" d="M118 53v11"/><path class="ray" d="M88 34H76"/><path class="ray" d="M160 34h12"/><path class="ray" d="M96 12l8 8"/><path class="ray" d="M140 12l-8 8"/><path class="ray" d="M96 56l8-8"/><path class="ray" d="M140 56l-8-8"/><path class="horizon horizon-back" d="M18 73c20-20 42-25 62-10 17-14 35-16 52-5 10 6 18 11 30 15"/><path class="horizon horizon-front" d="M12 79c22-13 45-15 65-3 19-11 40-12 61-2 9 4 18 7 30 8"/></svg></div>`;
     if(part==='afternoon')return`<div class="daily-time-graphic afternoon" aria-hidden="true"><svg viewBox="0 0 180 92" focusable="false"><circle class="sun" cx="126" cy="42" r="22"/><circle class="orbit" cx="126" cy="42" r="34"/><circle class="dot" cx="72" cy="24" r="5"/><circle class="dot small" cx="88" cy="68" r="3"/></svg></div>`;
     return`<div class="daily-time-graphic evening" aria-hidden="true"><svg viewBox="0 0 180 92" focusable="false"><path class="moon" d="M132 16a30 30 0 1 0 22 49 27 27 0 0 1-22-49Z"/><path class="star" d="M90 19l2.5 6.5L99 28l-6.5 2.5L90 37l-2.5-6.5L81 28l6.5-2.5zM62 48l1.8 4.7 4.7 1.8-4.7 1.8L62 61l-1.8-4.7-4.7-1.8 4.7-1.8z"/></svg></div>`;
   }
@@ -45,7 +46,7 @@
     const state=briefState.signature===signature?briefState.status:'idle';
     return`<section class="daily-assistant-brief card pad"><div class="daily-brief-head"><div><div class="today-eyebrow">DAILY BRIEF</div><h3>${mode==='review'?'오늘 하루 정리':'오늘의 브리핑'}</h3></div><span class="daily-brief-status">${state==='loading'?'AI 요약 중':state==='ready'?'AI 요약':'로컬 요약'}</span></div><div class="daily-brief-lines">${sentences.map(x=>`<p>${esc(x)}</p>`).join('')}</div></section>`;
   }
-  function reviewHtml(c,emphasized){const r=c.review,t=c.tomorrowFirstSchedule;return`<section class="daily-assistant-review card pad ${emphasized?'is-emphasized':''}"><div class="today-card-head"><div><div class="today-eyebrow">DAILY REVIEW</div><h3>오늘 정리</h3></div><span class="today-section-count">저녁</span></div><div class="daily-review-grid"><div><b>${r.completedTodos}</b><span>오늘 완료</span></div><div><b>${r.unfinishedTodos}</b><span>미완료</span></div><div><b>${r.passedSchedules}</b><span>지나간 일정</span></div><div><b>${t?esc(timeText(t)):'-'}</b><span>${t?'내일 첫 일정':'내일 일정 없음'}</span></div></div>${t?`<div class="daily-review-next">${esc(t.title)}</div>`:''}</section>`;}
+  function reviewHtml(c,emphasized){const r=c.review,t=c.tomorrowFirstSchedule;return`<section class="daily-assistant-review card pad ${emphasized?'is-emphasized':''}"><div class="today-card-head"><div><div class="today-eyebrow">DAILY REVIEW</div><h3>오늘 정리</h3></div><span class="today-section-count">저녁</span></div><div class="daily-review-grid"><div><b>${r.completedTodos}</b><span>오늘 완료</span></div><div><b>${r.unfinishedTodos}</b><span>미완료</span></div><div><b>${r.passedSchedules}</b><span>지나간 일정</span></div><div><b>${t?esc(timeText(t)):'-'}</b><span>${t?'내일 첫 일정':'내일 일정 없음'}</span>${t?`<small class="daily-review-title">${esc(t.title)}</small>`:''}</div></div></section>`;}
   function render(){
     const box=$('todayDashboard');if(!box)return;const c=context(),mode=dailyMode||defaultMode();dailyMode=mode;
     const hero=$('dailyAssistantHero'),part=dayPart();
@@ -55,7 +56,7 @@
     ${c.nextSchedule?`<section class="daily-next card pad"><span>다음 일정</span><b>${esc(timeText(c.nextSchedule))} · ${esc(c.nextSchedule.title)}</b></section>`:''}
     <div class="daily-assistant-action-grid"><section class="card pad daily-action-card"><div class="today-card-head"><h3>오늘 일정</h3><span class="today-section-count">${c.todaySchedules.length}개</span></div>${scheduleRows(c.todaySchedules)}</section><section class="card pad daily-action-card"><div class="today-card-head"><h3>오늘 할 일</h3><span class="today-section-count">${c.todayTodos.length}개</span></div>${todoRows(c.todayTodos)}</section><section class="card pad daily-action-card daily-assistant-attention"><div class="today-card-head"><h3>주의 필요</h3><span class="today-section-count">${c.overdueTodos.length}개</span></div>${todoRows(c.overdueTodos,{overdue:true})}</section></div>
     ${c.openTimeWindows.length?`<section class="daily-open-window"><span>여유 시간</span><b>${esc(c.openTimeWindows[0].start)}–${esc(c.openTimeWindows[0].end)}</b><small>${Math.round(c.openTimeWindows[0].minutes/60*10)/10}시간</small></section>`:''}
-    ${reviewHtml(c,mode==='review')}`;
+    ${isReviewWindow()?reviewHtml(c,mode==='review'):''}`;
     requestBrief(c,mode);
   }
   async function requestBrief(c,mode){
