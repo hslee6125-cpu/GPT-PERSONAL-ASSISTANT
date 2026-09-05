@@ -8,17 +8,18 @@
   let activeFilter='todo';
   let activeTodoMode='todo';
   let undoTimer=null;
+  let feedbackCache=null;
 
-  function loadClassificationFeedback(){try{const data=JSON.parse(localStorage.getItem(FEEDBACK_KEY)||'[]');return Array.isArray(data)?data.slice(-200):[];}catch{return [];}}
-  function recordClassificationFeedback(sourceText,from,to){if(!sourceText||from===to||!['todo','schedule'].includes(from)||!['todo','schedule'].includes(to))return;try{const list=loadClassificationFeedback();list.push(AssistantUtils.createClassificationFeedback(sourceText,from,to));localStorage.setItem(FEEDBACK_KEY,JSON.stringify(list.slice(-200)));}catch{}}
-  function resetClassificationLearning(){if(!confirm('분류 학습 기록을 모두 초기화할까요? 이 작업은 되돌릴 수 없습니다.'))return;try{localStorage.removeItem(FEEDBACK_KEY);alert('분류 학습 기록을 초기화했습니다.');}catch{alert('분류 학습 기록을 초기화하지 못했습니다.');}}
+  function loadClassificationFeedback(){if(Array.isArray(feedbackCache))return feedbackCache;try{const data=JSON.parse(localStorage.getItem(FEEDBACK_KEY)||'[]');feedbackCache=Array.isArray(data)?data.slice(-200):[];}catch{feedbackCache=[];}return feedbackCache;}
+  function recordClassificationFeedback(sourceText,from,to){if(!sourceText||from===to||!['todo','schedule'].includes(from)||!['todo','schedule'].includes(to))return;try{const list=loadClassificationFeedback();list.push(AssistantUtils.createClassificationFeedback(sourceText,from,to));feedbackCache=list.slice(-200);localStorage.setItem(FEEDBACK_KEY,JSON.stringify(feedbackCache));}catch{}}
+  function resetClassificationLearning(){if(!confirm('분류 학습 기록을 모두 초기화할까요? 이 작업은 되돌릴 수 없습니다.'))return;try{localStorage.removeItem(FEEDBACK_KEY);feedbackCache=[];alert('분류 학습 기록을 초기화했습니다.');}catch{alert('분류 학습 기록을 초기화하지 못했습니다.');}}
   function resetAssistantData(){
     const first='모든 할 일, 일정, 날짜 미정 일정, 메모, 프로젝트, 휴지통, 완료 항목과 분류 학습 기록이 삭제됩니다. 앱 설정과 실행 설정은 유지됩니다. 계속할까요?';
     if(!confirm(first))return;
     if(!confirm('정말 모든 Assistant 데이터를 초기화할까요? 이 작업은 되돌릴 수 없습니다.'))return;
     try{
       if(undoTimer){clearTimeout(undoTimer);undoTimer=null;}document.getElementById('assistantUndoToast')?.remove();
-      s.assistant=[];s.editingAssistantId=null;localStorage.removeItem(FEEDBACK_KEY);
+      s.assistant=[];s.editingAssistantId=null;localStorage.removeItem(FEEDBACK_KEY);feedbackCache=[];
       GPA.persist('reset-assistant-data');setActiveFilter('todo');
       alert('모든 Assistant 데이터가 초기화되었습니다.');
     }catch{alert('전체 데이터 초기화에 실패했습니다.');}
@@ -31,7 +32,7 @@
     const input=$('inboxText');const text=input.value.trim();if(!text)return;
     if(GPA.search?.handleSubmit(text)){GPA.search.refreshButtonMode();return;}
     GPA.search?.clear();
-    const recurrence=AssistantUtils.detectUnsupportedRecurrence(text);if(recurrence){setInboxError(recurrence.error);setInboxResult('');GPA.search?.refreshButtonMode();return;}
+    const analysis=AssistantUtils.analyzeNaturalInput(text,GPA.today());const recurrence=analysis.recurrence;if(recurrence){setInboxError(recurrence.error);setInboxResult('');GPA.search?.refreshButtonMode();return;}
     const localCommand=AssistantUtils.parseLocalInboxCommand(text,GPA.today());
     if(localCommand){
       setInboxError('');setInboxResult('');
@@ -47,9 +48,11 @@
       const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,currentDate:GPA.today()})});
       const d=await r.json();if(!r.ok)throw new Error(d.error||'분석 실패');
       const rawItems=Array.isArray(d.items)?d.items:[];const feedback=loadClassificationFeedback();
-      const items=AssistantUtils.prepareNaturalInboxItems(rawItems,text,GPA.today(),feedback);
-      if(!items.length){if(rawItems.some(item=>item?.type==='memo'))throw new Error('메모는 자동 생성하지 않습니다. 메모 탭에서 직접 작성해 주세요.');throw new Error('저장 가능한 항목을 찾지 못했습니다. 내용을 조금 더 구체적으로 입력해 주세요.');}
-      const now=new Date().toISOString();const saved=items.map(x=>({id:GPA.uid(),...x,done:false,createdAt:now}));s.assistant.unshift(...saved);
+      const prepared=AssistantUtils.prepareNaturalInboxItems(rawItems,text,GPA.today(),feedback,analysis);
+      if(!prepared.length){if(rawItems.some(item=>item?.type==='memo'))throw new Error('메모는 자동 생성하지 않습니다. 메모 탭에서 직접 작성해 주세요.');throw new Error('저장 가능한 항목을 찾지 못했습니다. 내용을 조금 더 구체적으로 입력해 주세요.');}
+      const now=new Date().toISOString();const items=AssistantUtils.filterRecentDuplicateItems(prepared,s.assistant,now,10000);
+      if(!items.length)throw new Error('같은 항목이 방금 등록되어 중복 저장하지 않았습니다.');
+      const saved=items.map(x=>({id:GPA.uid(),...x,done:false,createdAt:now}));s.assistant.unshift(...saved);
       const firstProject=(saved.find(x=>x.type==='project')?.title)||saved.find(x=>x.projectTitle)?.projectTitle||'';if(firstProject)projectHub.select(firstProject);
       input.value='';GPA.persist();const result=AssistantUtils.summarizeInboxItems(items);const modelSummary=String(d.summary||'').trim();
       setInboxResult(`✓ ${result.total}개 저장 · ${result.text}${modelSummary?` — ${modelSummary}`:''}`);btn.title=`최근 GPT 분류 ${((performance.now()-started)/1000).toFixed(1)}초`;
@@ -148,21 +151,21 @@
   function renderPastSchedules(items){if(!items.length)return '';return `<details class="past-schedules" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">과거 일정 ${items.length}개</summary><div class="list" style="margin-top:10px">${items.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join('')}</div></details>`;}
   function renderTrash(items){const controls=items.length?`<div class="trash-toolbar"><div><b>휴지통</b><span>${items.length}개 항목</span></div><button type="button" class="small ghost danger" data-assistant-action="empty-trash">휴지통 비우기</button></div>`:'';$('assistantList').innerHTML=controls+(items.length?items.map(trashCard).join(''):'<div class="empty">휴지통이 비어 있습니다.</div>');}
   function render(){
-    const projects=projectHub.getProjects();$('todoKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'todo').length;$('memoKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'memo').length;$('projKpi').textContent=projects.length;$('doneKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'done').length;$('trashKpi').textContent=AssistantUtils.filterAssistantItems(s.assistant,'trash').length;
+    const grouped=AssistantUtils.groupAssistantItems(s.assistant,GPA.today());
+    const projects=projectHub.getProjects();$('todoKpi').textContent=grouped.counts.todo;$('memoKpi').textContent=grouped.counts.memo;$('projKpi').textContent=projects.length;$('doneKpi').textContent=grouped.counts.done;$('trashKpi').textContent=grouped.counts.trash;
     document.querySelectorAll('[data-assistant-filter]').forEach(tab=>{const selected=tab.dataset.assistantFilter===activeFilter;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});const projectMode=activeFilter === 'project';$('assistantListPanel')?.classList.toggle('active',!projectMode);$('assistantProjectHub')?.classList.toggle('active',projectMode);if(projectMode){projectHub.render(projects);return;}
     const todoModeTabs=$('assistantTodoModeTabs');if(todoModeTabs){todoModeTabs.hidden=activeFilter!=='todo';todoModeTabs.querySelectorAll('[data-assistant-item-mode]').forEach(tab=>{const selected=tab.dataset.assistantItemMode===activeTodoMode;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',selected?'true':'false');});}
     const list=$('assistantList');list.classList.toggle('memo-board',activeFilter==='memo');
-    if(activeFilter==='trash'){renderTrash(AssistantUtils.filterAssistantItems(s.assistant,'trash'));return;}
+    if(activeFilter==='trash'){renderTrash(grouped.trash);return;}
     if(activeFilter==='todo'&&activeTodoMode==='schedule'){
-      const grouped=AssistantUtils.partitionSchedules(s.assistant,GPA.today());
-      const currentHtml=grouped.current.length?grouped.current.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join(''):'<div class="empty">일정 항목이 없습니다.</div>';
-      list.innerHTML=currentHtml+renderPastSchedules(grouped.past);return;
+      const currentHtml=grouped.schedules.current.length?grouped.schedules.current.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join(''):'<div class="empty">일정 항목이 없습니다.</div>';
+      list.innerHTML=currentHtml+renderPastSchedules(grouped.schedules.past);return;
     }
     let visible;
-    if(activeFilter==='todo'){
-      const allTodos=s.assistant.filter(item=>item&&!item.deletedAt&&item.type==='todo'&&!item.scheduleOnly);
-      visible=AssistantUtils.sortTodos(allTodos);
-    }else visible=AssistantUtils.filterAssistantItems(s.assistant,activeFilter);
+    if(activeFilter==='todo')visible=grouped.todoList;
+    else if(activeFilter==='memo')visible=grouped.memo;
+    else if(activeFilter==='done')visible=grouped.done;
+    else visible=AssistantUtils.filterAssistantItems(s.assistant,activeFilter);
     const emptyLabel=filterLabels[activeFilter];
     if(activeFilter==='memo'){list.innerHTML=memoComposer()+(visible.length?visible.map(x=>s.editingAssistantId===x.id?editCard(x):memoBoardCard(x)).join(''):'<div class="empty">메모가 없습니다. 위에서 직접 작성해 주세요.</div>');return;}
     list.innerHTML=visible.length?visible.map(x=>s.editingAssistantId===x.id?editCard(x):viewCard(x)).join(''):`<div class="empty">${esc(emptyLabel)} 항목이 없습니다.</div>`;
