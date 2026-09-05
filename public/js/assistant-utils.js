@@ -54,6 +54,12 @@
     } else if (hour < 0 || hour > 23) return null;
     return `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
   }
+  function naturalDaypartMeridiem(value) {
+    const part=String(value||'').trim();
+    if(part==='오전'||part==='아침')return '오전';
+    if(part==='오후'||part==='저녁'||part==='밤'||part==='점심')return '오후';
+    return '';
+  }
   function parseCompactClock(value) {
     const text=String(value||'');
     if(!/^\d{4}$/.test(text))return null;
@@ -168,16 +174,16 @@
     const source=String(text||'').trim();
     const dueDate=resolveNaturalDate(source,today);
     let dueTime=null,endTime=null,timeRange=false;
-    const range=source.match(/(오전|오후)?\s*(\d{1,2})시?(?:\s*(\d{1,2})분)?\s*(?:부터|에서)\s*(?:(오전|오후)\s*)?(\d{1,2})시?(?:\s*(\d{1,2})분)?\s*까지/);
+    const range=source.match(/(오전|오후|아침|점심|저녁|밤)?\s*(\d{1,2})시?(?:\s*(\d{1,2})분)?\s*(?:부터|에서)\s*(?:(오전|오후|아침|점심|저녁|밤)\s*)?(\d{1,2})시?(?:\s*(\d{1,2})분)?\s*까지/);
     if(range){
-      const first=range[1]||'';
+      const first=naturalDaypartMeridiem(range[1]);
       dueTime=parseClock(range[2],range[3]||0,first);
-      endTime=parseClock(range[5],range[6]||0,range[4]||first);
+      endTime=parseClock(range[5],range[6]||0,naturalDaypartMeridiem(range[4])||first);
       if(dueTime&&endTime&&endTime>dueTime)timeRange=true;else{dueTime=null;endTime=null;}
     }
     if(!dueTime){
-      const single=source.match(/(오전|오후)\s*(\d{1,2})시(?:\s*(\d{1,2})분)?/);
-      if(single)dueTime=parseClock(single[2],single[3]||0,single[1]);
+      const single=source.match(/(오전|오후|아침|점심|저녁|밤)\s*(\d{1,2})시(?:\s*(\d{1,2})분)?/);
+      if(single)dueTime=parseClock(single[2],single[3]||0,naturalDaypartMeridiem(single[1]));
     }
     const deadline=!timeRange && /까지/.test(source) && Boolean(dueDate || dueTime);
     const scheduleKeywords=SCHEDULE_KEYWORDS.filter(k=>source.includes(k));
@@ -218,7 +224,8 @@
     if(!normalized)return null;
     const source=String(sourceText||'').trim();
     if(!source)return normalized;
-    const sig=(analysis||analyzeNaturalInput(source,today)).temporal;
+    const inputAnalysis=analysis||analyzeNaturalInput(source,today);
+    const sig=inputAnalysis.temporal;
     const strongTodo=sig.todoKeywords.some(k=>['준비','하기','구매','신청','정리','확인','보내기','전화하기','예약하기','제출','결제','갱신','작성','잡기'].includes(k));
     const strongSchedule=sig.timeRange || (sig.hasDate&&sig.hasTime&&!sig.deadline);
     let schedule=Boolean(normalized.scheduleOnly);
@@ -236,7 +243,9 @@
     }
     if((sig.deadline||strongTodo)&&normalized.type==='memo')normalized.type='todo';
     normalized.sourceText=source;
-    if(sig.dueDate&&!normalized.dueDate)normalized.dueDate=sig.dueDate;
+    if(sig.dueDate){
+      if(!inputAnalysis.multipleIntent||!normalized.dueDate)normalized.dueDate=sig.dueDate;
+    }
     if(schedule){
       normalized.type='todo';normalized.scheduleOnly=true;
       normalized.dueTime=sig.dueTime||normalized.dueTime||null;
@@ -275,7 +284,17 @@
     if(deduped.length>1&&!inputAnalysis.multipleIntent){
       const sig=inputAnalysis.temporal;
       if(sig.deadline){const todo=deduped.find(x=>x.type==='todo'&&!x.scheduleOnly);if(todo)return [todo];}
-      if(sig.timeRange||(sig.hasDate&&sig.hasTime&&!sig.deadline)){const schedule=deduped.find(x=>x.scheduleOnly);if(schedule)return [schedule];}
+      if(sig.timeRange||(sig.hasDate&&sig.hasTime&&!sig.deadline)){
+        const schedules=deduped.filter(x=>x.scheduleOnly);
+        if(schedules.length){
+          const schedule=schedules.slice().sort((a,b)=>{
+            const metaPenalty=x=>/(?:메모|참고|요약|정리)$/.test(String(x.title||'').trim())?0.25:0;
+            const score=x=>titleSimilarity(source,x.title)-metaPenalty(x)+(x.dueTime?0.05:0)+(x.endTime?0.03:0);
+            return score(b)-score(a);
+          })[0];
+          return [schedule];
+        }
+      }
     }
     return deduped;
   }
@@ -660,6 +679,42 @@
     };
   }
 
+  function compactTitleIdentity(value){
+    return String(value||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,'');
+  }
+  function scheduleMonth(item){
+    if(!item?.scheduleOnly)return null;
+    if(item.dateUndecided)return normalizeDueMonth(item.pendingMonth);
+    const due=normalizeDueDate(item.dueDate);
+    return due?due.slice(0,7):null;
+  }
+  function reconcileUndecidedScheduleConflicts(incoming,existing){
+    const current=(Array.isArray(existing)?existing:[]).filter(x=>x&&!x.deletedAt&&x.scheduleOnly);
+    const accepted=[];const superseded=new Set();
+    for(const item of Array.isArray(incoming)?incoming:[]){
+      if(!item?.scheduleOnly){accepted.push(item);continue;}
+      const title=compactTitleIdentity(item.title),month=scheduleMonth(item);
+      if(!title||!month){accepted.push(item);continue;}
+      const isPending=Boolean(item.dateUndecided);
+      const conflicts=current.filter(old=>compactTitleIdentity(old.title)===title&&scheduleMonth(old)===month);
+      if(isPending){
+        const exactExists=conflicts.some(old=>!old.dateUndecided&&normalizeDueDate(old.dueDate));
+        const acceptedExact=accepted.some(old=>old?.scheduleOnly&&!old.dateUndecided&&compactTitleIdentity(old.title)===title&&scheduleMonth(old)===month);
+        if(exactExists||acceptedExact)continue;
+        accepted.push(item);continue;
+      }
+      if(normalizeDueDate(item.dueDate)){
+        for(const old of conflicts)if(old.dateUndecided&&old.id)superseded.add(old.id);
+        for(let i=accepted.length-1;i>=0;i--){
+          const old=accepted[i];
+          if(old?.scheduleOnly&&old.dateUndecided&&compactTitleIdentity(old.title)===title&&scheduleMonth(old)===month)accepted.splice(i,1);
+        }
+      }
+      accepted.push(item);
+    }
+    return {items:accepted,supersededIds:[...superseded]};
+  }
+
   function sameDuplicateIdentity(a,b){
     const kindA=a?.scheduleOnly?'schedule':a?.type,kindB=b?.scheduleOnly?'schedule':b?.type;
     return Boolean(a&&b&&kindA===kindB&&String(a.title||'').trim()===String(b.title||'').trim()&&
@@ -780,6 +835,7 @@
     partitionSchedules,
     groupAssistantItems,
     filterRecentDuplicateItems,
+    reconcileUndecidedScheduleConflicts,
     softDeleteAssistantItem,
     restoreAssistantItem,
     permanentlyDeleteAssistantItem,
