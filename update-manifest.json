@@ -1,7 +1,23 @@
 {
-  "version": "5.1.20",
+  "version": "5.2.0",
   "runNpmInstall": false,
   "files": [
+    {
+      "path": "public/index.html",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html"
+    },
+    {
+      "path": "public/calendar-v52.css",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/calendar-v52.css"
+    },
+    {
+      "path": "public/js/calendar-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/calendar-utils.js"
+    },
+    {
+      "path": "public/js/calendar.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/calendar.js"
+    },
     {
       "path": "public/js/assistant-utils.js",
       "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-utils.js"
