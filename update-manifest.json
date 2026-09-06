@@ -1,18 +1,21 @@
 {
-  "version": "5.3.5",
+  "version": "5.3.4.1",
   "runNpmInstall": false,
   "files": [
     {
-      "path": "public/app.css",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/app.css"
+      "path": "public/index.html",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/index.html",
+      "sha256": "f123a1269e19e3fd35802c79fff43f567878d5ff63aed696ec63843ca1253ad0"
     },
     {
-      "path": "public/js/assistant.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant.js"
+      "path": "public/js/dashboard.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/dashboard.js",
+      "sha256": "11bbbcae2a2b2969faf1f93be89718eb7a5dd82881da99105183433f812cfaee"
     },
     {
-      "path": "public/js/assistant-utils.js",
-      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/assistant-utils.js"
+      "path": "public/js/daily-assistant-utils.js",
+      "url": "https://raw.githubusercontent.com/hslee6125-cpu/GPT-PERSONAL-ASSISTANT/main/public/js/daily-assistant-utils.js",
+      "sha256": "57ac3a04f6eb0460b5b14a373bbdcbb58dd257faabd2b2ec42a426683d5fd614"
     }
   ]
 }
